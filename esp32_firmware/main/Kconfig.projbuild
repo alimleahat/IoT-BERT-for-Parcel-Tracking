@@ -1,0 +1,22 @@
+menu "Parcel Tracker Configuration"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default "MyNetwork"
+        help
+            SSID of the WiFi network to connect to.
+
+    config WIFI_PASSWORD
+        string "WiFi Password"
+        default "MyPassword"
+        help
+            Password for the WiFi network.
+
+    config SERVER_URL
+        string "Flask Server URL"
+        default "http://172.20.10.8:5001/api/intent"
+        help
+            Full URL of the Flask /api/intent endpoint.
+            Must be reachable from the ESP32 on the same LAN.
+
+endmenu

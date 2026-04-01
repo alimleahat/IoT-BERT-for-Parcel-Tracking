@@ -1,0 +1,37 @@
+# PyTorch model checkpoints (too large for git)
+pytorch_model.bin
+*.bin
+*.pt
+*.pth
+
+# Finetuned model weights (use safetensors or download separately)
+finetuned_model/model.safetensors
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# ESP-IDF build artifacts
+build/
+managed_components/
+
+# ESP-IDF config (may contain WiFi credentials)
+sdkconfig
+sdkconfig.old
+
+# macOS
+.DS_Store
+
+# Claude Code
+.claude/
+
+# IDE
+.vscode/
+.idea/

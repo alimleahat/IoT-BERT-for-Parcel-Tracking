@@ -1,0 +1,294 @@
+[
+  {
+    "text": "I need the pricing details for order 5400",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "total order list",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "find high priority orders",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "get order history",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "search for orders needing approval",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "bring up past orders",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "pull up all orders",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "what's the order history",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "search for cancelled orders",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "can I see all orders please",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "open order 50 details",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "tell me about order number 115",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "look for subscription orders",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "get order 999",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "filter to show depot summit only",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "what is the estimated expense for order 5600",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "show the full list of orders",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "filter orders for depot landing",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "get every order",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "filter by depot downtown",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "show me what depot beta has",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "view the complete order list",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "pull up all past deliveries",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "retrieve the entire order catalog",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "show me order 85",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "what are the contents of order 2600",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "hunt down orders shipped via FedEx",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "find expedited orders",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "show me previous orders",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "order 4700 price",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "check the details of order 1700",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "find orders that match keyword widget",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "what has been ordered over the last week",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "fetch all orders",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "zoom into depot central warehouse",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "display every order",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "show me depot 2 orders",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "check what's inside order 2700",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "search for bulk orders",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "I need the full order overview",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "I need a recap of recent orders",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "depot park orders please",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "tell me about order 888",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "order log please",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "depot springs orders only",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "pull up order 8901",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "bring up the order archive",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "how much for order 2700",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "search by delivery date",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "display past orders",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "get me depot bridge orders",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "search orders placed in January",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "how much is order 900",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "get the price of order 1400",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "show info for order 333",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "display order number 2000",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "show me every single order",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "orders from depot bay",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "give me a summary of order 2400",
+    "label": "VIEW_ORDER"
+  },
+  {
+    "text": "filter orders from depot peninsula",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "history of all orders",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "order 3700 total cost",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "get me the total for order 3100",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "retrieve every order",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "compute the total for order 1300",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "search for orders above 1000",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "which orders are from depot main",
+    "label": "FILTER_BY_DEPOT"
+  },
+  {
+    "text": "bring up all the orders",
+    "label": "VIEW_ALL"
+  },
+  {
+    "text": "cost estimate for order 1600",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "estimate total for order 3500",
+    "label": "CALCULATE_COST"
+  },
+  {
+    "text": "locate orders that were placed on Monday",
+    "label": "SEARCH_ORDER"
+  },
+  {
+    "text": "display archived orders",
+    "label": "SHOW_HISTORY"
+  },
+  {
+    "text": "how much would it cost to fulfill order 5100",
+    "label": "CALCULATE_COST"
+  }
+]
