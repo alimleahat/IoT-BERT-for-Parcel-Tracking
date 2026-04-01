@@ -41,7 +41,7 @@ An edge-AI system that runs a quantised BERT model on an ESP32-S3 microcontrolle
 
 The fine-tuned PyTorch checkpoint (~2.78 GB) is **not** included in this repository.
 
-**Download:** [ADD GOOGLE DRIVE LINK]
+To obtain the model, fine-tune from scratch using `finetune_and_export.py` (see [Fine-Tuning](#2-fine-tuning-optional) below).
 
 The quantised `.tflite` model files **are** included under `tflite_models/` and embedded in `esp32_firmware/main/bert_model.tflite`.
 
