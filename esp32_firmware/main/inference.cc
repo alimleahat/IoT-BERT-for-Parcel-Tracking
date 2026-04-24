@@ -7,6 +7,7 @@
 
 #include "inference.h"
 #include "custom_gelu.h"
+#include "custom_fc.h"
 
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -33,14 +34,14 @@ static const char *INTENT_LABELS[NUM_INTENTS] = {
  * bert-tiny (2 layers, 128 hidden, seq_len=64) needs roughly 1-2 MB
  * for activations.  We allocate 4 MB to be safe.
  */
-#define TENSOR_ARENA_SIZE  (4 * 1024 * 1024)
+#define TENSOR_ARENA_SIZE  (6 * 1024 * 1024)
 
 static uint8_t *tensor_arena = nullptr;
 static tflite::MicroInterpreter *interpreter = nullptr;
 static const tflite::Model *model = nullptr;
 
-/* ── Op resolver: every op used by the dynamic-range bert-tiny model ── */
-static tflite::MicroMutableOpResolver<18> resolver;
+/* ── Op resolver: every op used by the INT8-quantized bert-tiny model ── */
+static tflite::MicroMutableOpResolver<19> resolver;
 
 /* ── Public API ────────────────────────────────────────────────────────── */
 
@@ -60,11 +61,12 @@ extern "C" int inference_init(const uint8_t *model_data, int model_len)
     resolver.AddBatchMatMul();
     resolver.AddCast();
     resolver.AddDequantize();
-    resolver.AddFullyConnected();
+    resolver.AddFullyConnected(Register_HYBRID_FC());
     resolver.AddGather();
     resolver.AddGelu(Register_GELU(), ParseGelu);
     resolver.AddMean();
     resolver.AddMul();
+    resolver.AddQuantize();
     resolver.AddReshape();
     resolver.AddRsqrt();
     resolver.AddSoftmax();

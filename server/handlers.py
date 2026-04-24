@@ -154,17 +154,45 @@ def handle_show_history(params):
 
 def handle_calculate_cost(params):
     """Mirror of C calculateCost(): base + (distance * ratePerKm) + (weight * ratePerKg).
-    Accepts weight and courier_id (or courier_name).
+
+    Accepts either:
+      - {"order_id": N}                 → look up the order (active+history),
+                                           pull weight + courier from it
+      - {"weight": W, "courier_id": I}  → compute directly
+      - {"weight": W, "courier_name": S}→ resolve depot by name, compute
     """
     depots = load_depots()
 
     weight = params.get("weight")
+    courier_id = params.get("courier_id")
+    courier_name = params.get("courier_name")
+
+    # Order-id lookup path: find the order, fill in weight + courier from it.
+    order_id = params.get("order_id")
+    if order_id is not None and weight is None:
+        order_id = int(order_id)
+        order = None
+        for o in load_orders():
+            if o["package_id"] == order_id:
+                order = o
+                break
+        if order is None:
+            for o in load_history():
+                if o["package_id"] == order_id:
+                    order = o
+                    break
+        if order is None:
+            return {
+                "intent": "CALCULATE_COST",
+                "error": f"Order {order_id} not found",
+            }
+        weight = float(order["weight"])
+        if courier_id is None and courier_name is None:
+            courier_id = int(order["courier"])
+
     if weight is None:
         return {"intent": "CALCULATE_COST", "error": "Missing weight parameter"}
     weight = float(weight)
-
-    courier_id = params.get("courier_id")
-    courier_name = params.get("courier_name")
 
     if courier_name and not courier_id:
         depot = find_depot_by_name(depots, courier_name)
@@ -183,13 +211,16 @@ def handle_calculate_cost(params):
     courier_id = int(courier_id)
     cost = calculate_cost(depots, weight, courier_id)
 
-    return {
+    resp = {
         "intent": "CALCULATE_COST",
         "weight_kg": weight,
         "courier_id": courier_id,
         "courier_name": get_courier_name(depots, courier_id),
         "cost_gbp": cost,
     }
+    if order_id is not None:
+        resp["order_id"] = int(order_id)
+    return resp
 
 
 # ── SEARCH_ORDER ─────────────────────────────────────────────────────────────

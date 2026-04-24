@@ -127,9 +127,28 @@ void entity_extract(const char *text, const char *intent, entities_t *out)
     else if (strcmp(intent, "CALCULATE_COST") == 0) {
         out->weight = find_weight(text);
         out->courier_id = find_courier(text, out->courier_name);
-        /* If no weight found with "kg", try to find any number as weight */
+
+        /* Decide if the bare number in the text is an order_id or a weight.
+         *   "cost of order 101"       → order_id = 101  (server looks it up)
+         *   "cost of a 5kg package"   → weight = 5.0    (explicit kg)
+         *   "cost for 4 at FadEx"     → weight = 4.0    (fallback)
+         * When no "kg"/"kilo" unit was found, prefer order_id if the phrase
+         * literally mentions "order"; otherwise fall back to treating the
+         * number as a weight. */
         if (out->weight < 0) {
-            out->weight = (float)find_number(text);
+            /* lowercase search for "order" keyword */
+            char lower[256];
+            int len = (int)strlen(text);
+            if (len > 255) len = 255;
+            for (int i = 0; i < len; i++) lower[i] = (char)tolower((unsigned char)text[i]);
+            lower[len] = '\0';
+
+            if (strstr(lower, "order") != NULL) {
+                out->order_id = find_number(text);
+            } else {
+                int n = find_number(text);
+                if (n >= 0) out->weight = (float)n;
+            }
         }
     }
     /* VIEW_ALL and SHOW_HISTORY need no entities */

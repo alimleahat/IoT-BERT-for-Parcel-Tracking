@@ -1,12 +1,9 @@
 # Target: ESP32-S3
 CONFIG_IDF_TARGET="esp32s3"
 
-# WiFi credentials (override via menuconfig or sdkconfig.local)
-CONFIG_WIFI_SSID="AliMleahat"
-CONFIG_WIFI_PASSWORD=""
-
-# Flask server URL
-CONFIG_SERVER_URL="http://172.20.10.12:5001/api/intent"
+# NOTE: WiFi config is intentionally removed. The firmware no longer
+# connects to the network — the laptop bridge (server/serial_bridge.py)
+# relays intents to Flask over USB serial via TX:/RX: markers.
 
 # Flash: 8MB with custom partition table (large app for BERT model)
 CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
@@ -14,7 +11,7 @@ CONFIG_ESPTOOLPY_FLASHSIZE="8MB"
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 
-# Increase main task stack for HTTP + TFLite
+# Larger main task stack for TFLite Micro interpreter work
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
 
 # Enable PSRAM if available on your board
@@ -22,3 +19,11 @@ CONFIG_ESP32S3_SPIRAM_SUPPORT=y
 CONFIG_SPIRAM=y
 CONFIG_SPIRAM_MODE_OCT=y
 CONFIG_SPIRAM_SPEED_80M=y
+
+# Route stdin/stdout to USB-Serial-JTAG so the host's /dev/cu.usbmodem*
+# is a true bidirectional console (getchar() reads from the same port
+# that prints arrive on). Without this, UART0 is primary and keystrokes
+# sent over USB never reach read_line().
+CONFIG_ESP_CONSOLE_UART_DEFAULT=n
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+CONFIG_ESP_CONSOLE_SECONDARY_NONE=y
