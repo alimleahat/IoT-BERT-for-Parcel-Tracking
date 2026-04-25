@@ -22,6 +22,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -32,6 +33,85 @@
 #include "tokenizer.h"
 #include "inference.h"
 #include "entity.h"
+
+/* ── Intent indices (must match the order in inference.cc) ────────────── */
+#define IDX_VIEW_ALL         0
+#define IDX_VIEW_ORDER       1
+#define IDX_FILTER_BY_DEPOT  2
+#define IDX_SHOW_HISTORY     3
+#define IDX_CALCULATE_COST   4
+#define IDX_SEARCH_ORDER     5
+
+/* Below this top-2 logit margin we treat the prediction as ambiguous and
+ * let the keyword fallback override. Empirically the well-trained phrases
+ * win by ≥1.0; "show delivered orders" came out at 0.02. 0.30 is a safe
+ * threshold that won't trigger on confident predictions. */
+#define INTENT_MARGIN_THRESHOLD  0.30f
+
+/* Lowercase-aware substring search (input is small so brute force is fine). */
+static int contains_ci(const char *hay, const char *needle) {
+    size_t hlen = strlen(hay), nlen = strlen(needle);
+    if (nlen == 0 || nlen > hlen) return 0;
+    for (size_t i = 0; i + nlen <= hlen; i++) {
+        size_t k = 0;
+        while (k < nlen) {
+            char a = (char)tolower((unsigned char)hay[i + k]);
+            char b = (char)tolower((unsigned char)needle[k]);
+            if (a != b) break;
+            k++;
+        }
+        if (k == nlen) return 1;
+    }
+    return 0;
+}
+
+/* If the top-2 logits are within INTENT_MARGIN_THRESHOLD, fall back to a
+ * tiny keyword rule. This is a standard hybrid-NLP pattern: BERT for fuzzy
+ * cases, rules for unambiguous keywords. Returns the (possibly overridden)
+ * intent index; sets *overridden to 1 if a rule fired. */
+static int keyword_fallback(const char *text, int intent_idx, const float *scores,
+                            int *overridden) {
+    *overridden = 0;
+
+    /* Find top-2 logits without sorting the array. */
+    int best = intent_idx;
+    float best_s = scores[best];
+    float second_s = -1e30f;
+    for (int i = 0; i < NUM_INTENTS; i++) {
+        if (i == best) continue;
+        if (scores[i] > second_s) second_s = scores[i];
+    }
+    float margin = best_s - second_s;
+    if (margin >= INTENT_MARGIN_THRESHOLD) {
+        return intent_idx;  /* model is confident — trust it */
+    }
+
+    /* Ambiguous prediction. Walk a small list of high-signal keywords and
+     * override if any clearly map to a specific intent. Order matters
+     * (more specific first). */
+    if (contains_ci(text, "delivered") || contains_ci(text, "history")
+        || contains_ci(text, "past")    || contains_ci(text, "previous")
+        || contains_ci(text, "archive")) {
+        *overridden = 1;
+        return IDX_SHOW_HISTORY;
+    }
+    if (contains_ci(text, "depot") || contains_ci(text, "courier")) {
+        *overridden = 1;
+        return IDX_FILTER_BY_DEPOT;
+    }
+    if (contains_ci(text, "cost") || contains_ci(text, "price")
+        || contains_ci(text, "how much")) {
+        *overridden = 1;
+        return IDX_CALCULATE_COST;
+    }
+    if (contains_ci(text, "all ") || contains_ci(text, "every ")
+        || contains_ci(text, "list everything")) {
+        *overridden = 1;
+        return IDX_VIEW_ALL;
+    }
+
+    return intent_idx;  /* no rule fired, keep the model's pick */
+}
 
 /* ── Configuration ─────────────────────────────────────────────────────── */
 
@@ -213,11 +293,25 @@ void app_main(void)
             ESP_LOGE(TAG, "Inference failed");
             continue;
         }
+
+        /* Hybrid disambiguation: if the model's top-2 logits are too close,
+         * fall back to keyword rules. This catches phrasings outside the
+         * training distribution (e.g. "show delivered orders" tied between
+         * SEARCH_ORDER and SHOW_HISTORY). */
+        int overridden = 0;
+        int orig_idx = intent_idx;
+        intent_idx = keyword_fallback(input, intent_idx, scores, &overridden);
         const char *intent = inference_intent_label(intent_idx);
 
         /* Log scores + timing */
-        printf("Intent: %s (score=%.3f) — %lld ms\n",
-               intent, scores[intent_idx], (long long)(t1 - t0));
+        if (overridden) {
+            printf("Intent: %s (overridden from %s by keyword rule) — %lld ms\n",
+                   intent, inference_intent_label(orig_idx),
+                   (long long)(t1 - t0));
+        } else {
+            printf("Intent: %s (score=%.3f) — %lld ms\n",
+                   intent, scores[intent_idx], (long long)(t1 - t0));
+        }
         printf("  Scores: ");
         for (int i = 0; i < NUM_INTENTS; i++) {
             printf("%s=%.2f ", inference_intent_label(i), scores[i]);

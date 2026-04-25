@@ -31,10 +31,12 @@ PHRASES = [
     "filter by depot FadEx",
     "show history",
     "calculate the cost of order 101",
-    "search for order with ID 123",
+    "view order 123",   # exercises the history fallback path of VIEW_ORDER
 ]
 
-LAT_RE = re.compile(r"Intent:\s+(\w+)\s+\(score=[-\d.]+\)\s+—\s+(\d+)\s+ms")
+LAT_RE = re.compile(
+    r"Intent:\s+(\w+)\s+\((?:score=[-\d.]+|overridden from \w+ by keyword rule)\)\s+—\s+(\d+)\s+ms"
+)
 ARENA_RE = re.compile(r"Arena used:\s+(\d+)\s*/\s*(\d+)\s+bytes")
 
 

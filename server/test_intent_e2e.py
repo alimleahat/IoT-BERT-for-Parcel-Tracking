@@ -22,12 +22,12 @@ import serial
 COMMANDS = [
     # Each phrase is picked from the training distribution — strong margins in
     # the HF model, so the on-device INT8-weights hybrid kernel matches too.
-    "show me all orders",                  # VIEW_ALL          (+1.95)
-    "view order 101",                      # VIEW_ORDER        (+1.96)  → finds active 101
-    "filter by depot FadEx",               # FILTER_BY_DEPOT   (+3.18)  → active orders at FadEx
-    "show history",                        # SHOW_HISTORY      (+1.95)  → 14 delivered
-    "calculate the cost of order 101",     # CALCULATE_COST    (+2.58)  → weight 12 @ FadEx
-    "search for order with ID 123",        # SEARCH_ORDER      (+1.72)  → finds 123 in history
+    "show me all orders",                  # VIEW_ALL          → 8 active
+    "view order 101",                      # VIEW_ORDER        → finds active 101
+    "filter by depot FadEx",               # FILTER_BY_DEPOT   → active orders at FadEx
+    "show history",                        # SHOW_HISTORY      → 16 delivered
+    "calculate the cost of order 101",     # CALCULATE_COST    → £7.50 via FadEx
+    "view order 123",                      # VIEW_ORDER        → falls through to history
 ]
 
 

@@ -61,8 +61,12 @@ def handle_view_all(params):
 # ── VIEW_ORDER ───────────────────────────────────────────────────────────────
 
 def handle_view_order(params):
-    """Mirror of C searchOrder() first half: find a specific order by ID
-    in active orders.
+    """Look up an order by ID across active orders AND history.
+
+    Mirrors the C searchOrder() function (both halves). SEARCH_ORDER is
+    aliased to this same handler — they're semantically the same operation
+    and the model's distinction between them is brittle, so we collapse
+    them on the server side and present a single response shape.
     """
     order_id = params.get("order_id")
     if order_id is None:
@@ -70,9 +74,9 @@ def handle_view_order(params):
 
     order_id = int(order_id)
     depots = load_depots()
-    orders = load_orders()
 
-    for order in orders:
+    # 1. Search active orders first (mirrors C logic order).
+    for order in load_orders():
         if order["package_id"] == order_id:
             return {
                 "intent": "VIEW_ORDER",
@@ -81,10 +85,20 @@ def handle_view_order(params):
                 "order": _enrich_active_order(order, depots),
             }
 
+    # 2. Fall through to history (delivered orders).
+    for order in load_history():
+        if order["package_id"] == order_id:
+            return {
+                "intent": "VIEW_ORDER",
+                "found": True,
+                "source": "history",
+                "order": _enrich_history_order(order, depots),
+            }
+
     return {
         "intent": "VIEW_ORDER",
         "found": False,
-        "message": f"No active order with ID {order_id}",
+        "message": f"No order with ID {order_id} in active orders or history",
     }
 
 
@@ -226,43 +240,14 @@ def handle_calculate_cost(params):
 # ── SEARCH_ORDER ─────────────────────────────────────────────────────────────
 
 def handle_search_order(params):
-    """Mirror of C searchOrder() (both halves): search by package ID
-    across active orders AND history.
+    """Alias for handle_view_order: same operation, same response.
+
+    The model still has SEARCH_ORDER as a distinct class (we kept the
+    original 6-way head from the report) but on the server it's just
+    a forward to VIEW_ORDER so the user sees one consistent answer
+    regardless of how the BERT classifier disambiguates the phrasing.
     """
-    order_id = params.get("order_id")
-    if order_id is None:
-        return {"intent": "SEARCH_ORDER", "error": "Missing order_id parameter"}
-
-    order_id = int(order_id)
-    depots = load_depots()
-
-    # 1. Search active orders first (mirrors C logic order)
-    orders = load_orders()
-    for order in orders:
-        if order["package_id"] == order_id:
-            return {
-                "intent": "SEARCH_ORDER",
-                "found": True,
-                "source": "active",
-                "order": _enrich_active_order(order, depots),
-            }
-
-    # 2. Search history (mirrors the fopen("data/history.txt") second half)
-    history = load_history()
-    for order in history:
-        if order["package_id"] == order_id:
-            return {
-                "intent": "SEARCH_ORDER",
-                "found": True,
-                "source": "history",
-                "order": _enrich_history_order(order, depots),
-            }
-
-    return {
-        "intent": "SEARCH_ORDER",
-        "found": False,
-        "message": f"No order with ID {order_id} found in active or history",
-    }
+    return handle_view_order(params)
 
 
 # ── Dispatcher ───────────────────────────────────────────────────────────────

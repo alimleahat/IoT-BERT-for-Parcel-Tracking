@@ -171,7 +171,7 @@ const PHRASES = [
   "filter by depot FadEx",
   "show history",
   "calculate the cost of order 101",
-  "search for order with ID 123",
+  "view order 123",
 ];
 
 const cmd = document.getElementById("cmd");
@@ -262,12 +262,17 @@ function render(j) {
   const score = j.score != null ? j.score.toFixed(2) : "—";
   const ms = j.latency_ms != null ? `${j.latency_ms} ms` : "—";
 
+  const overrideBadge = j.overridden_from
+    ? `<div style="color:var(--warn);font-size:11px;margin-top:4px">
+         keyword override · BERT picked ${escapeHtml(j.overridden_from)} (top-2 logits within margin)
+       </div>` : "";
   let html = `
     <div class="grid">
       <div class="card">
         <div class="label">Predicted intent</div>
         <div class="big" style="color:var(--accent-2)">${escapeHtml(intent)}</div>
         <div style="color:var(--muted);font-size:12px">logit=${score}</div>
+        ${overrideBadge}
       </div>
       <div class="card">
         <div class="label">On-device latency</div>

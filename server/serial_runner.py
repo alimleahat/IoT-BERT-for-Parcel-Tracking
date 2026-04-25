@@ -37,8 +37,14 @@ import serial
 
 
 # Lines emitted by main.c that we parse. Keep in sync with esp32_firmware/main/main.c.
-_INTENT_RE = re.compile(
+# Two flavours of the Intent line:
+#   Intent: VIEW_ALL (score=2.011) — 3720 ms
+#   Intent: SHOW_HISTORY (overridden from SEARCH_ORDER by keyword rule) — 510 ms
+_INTENT_NORMAL_RE = re.compile(
     r"Intent:\s+(\w+)\s+\(score=([-\d.]+)\)\s+—\s+(\d+)\s+ms"
+)
+_INTENT_OVERRIDE_RE = re.compile(
+    r"Intent:\s+(\w+)\s+\(overridden from (\w+) by keyword rule\)\s+—\s+(\d+)\s+ms"
 )
 _SCORES_LINE_RE = re.compile(r"Scores:\s+(.*)")
 _SCORE_PAIR_RE = re.compile(r"(\w+)=([-\d.]+)")
@@ -60,6 +66,7 @@ class RunResult:
     request_json: dict[str, Any] | None = None
     response_json: dict[str, Any] | None = None
     raw_log: list[str] = field(default_factory=list)
+    overridden_from: str | None = None  # set if firmware applied keyword fallback
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -72,6 +79,7 @@ class RunResult:
             "request": self.request_json,
             "response": self.response_json,
             "raw_log": self.raw_log,
+            "overridden_from": self.overridden_from,
         }
 
 
@@ -211,15 +219,26 @@ class SerialRunner:
                 continue
             result.raw_log.append(line)
 
-            # Parse Intent line.
-            m = _INTENT_RE.search(line)
+            # Parse Intent line — either the normal "score=X" form or the
+            # keyword-override form. Score may be filled in later from the
+            # Scores: line if this was an override.
+            m = _INTENT_NORMAL_RE.search(line)
             if m:
                 result.intent = m.group(1)
                 result.score = float(m.group(2))
                 result.latency_ms = int(m.group(3))
                 continue
+            mo = _INTENT_OVERRIDE_RE.search(line)
+            if mo:
+                result.intent = mo.group(1)
+                result.overridden_from = mo.group(2)
+                result.latency_ms = int(mo.group(3))
+                # score will be backfilled when we see the Scores: line
+                continue
 
             # Parse Scores line — there are 6 KEY=VAL pairs after "Scores:".
+            # If this followed an override, backfill the per-class score so
+            # the UI's score field reflects the chosen intent.
             sm = _SCORES_LINE_RE.search(line)
             if sm:
                 for k, v in _SCORE_PAIR_RE.findall(sm.group(1)):
@@ -227,6 +246,8 @@ class SerialRunner:
                         result.scores[k] = float(v)
                     except ValueError:
                         pass
+                if result.score is None and result.intent in result.scores:
+                    result.score = result.scores[result.intent]
                 continue
 
             # Parse Entity lines — appear as "I (..) PARCEL: Entity: KEY=VAL".
