@@ -178,6 +178,12 @@ TfLiteStatus FcEval(TfLiteContext* context, TfLiteNode* node) {
         for (int i = 0; i < input->dims->size; i++) total *= input->dims->data[i];
         const int batches = (N > 0) ? (total / N) : 1;
 
+        /* Single-pass scalar fused-multiply-accumulate. Under -O2 the
+         * compiler unrolls/pipelines this loop into something close to
+         * 1 FMAC per cycle on Xtensa LX7 — empirically faster than calling
+         * a separate dequantize-pass + dsps_dotprod_f32 (the two-pass
+         * version doubles memory traffic and adds function-call overhead
+         * that isn't amortized for N=128). */
         for (int b = 0; b < batches; b++) {
             const float* x = in_data  + b * N;
             float*       y = out_data + b * M;

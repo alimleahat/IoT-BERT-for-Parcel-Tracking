@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parcel Tracker — On-device BERT</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #1a2129;
+    --panel-2: #232b35;
+    --border: #2c3540;
+    --text: #e6edf3;
+    --muted: #8b95a1;
+    --accent: #4cc2ff;
+    --accent-2: #79e0a4;
+    --warn: #f0b341;
+    --error: #ff7b72;
+    --bar-bg: #2c3540;
+    --bar-fill: linear-gradient(90deg, #4cc2ff, #79e0a4);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    height: 100%;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+  header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+  h1 { font-size: 22px; margin: 0; font-weight: 600; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 999px; font-size: 12px; color: var(--muted);
+  }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .pill.online .dot { background: var(--accent-2); box-shadow: 0 0 6px var(--accent-2); }
+  .pill.error .dot { background: var(--error); }
+
+  .input-row {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  input[type=text] {
+    flex: 1; padding: 12px 14px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 15px; font-family: inherit;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--accent); }
+  button {
+    padding: 12px 20px;
+    background: var(--accent); color: #0f1419;
+    border: 0; border-radius: 8px; font-weight: 600;
+    cursor: pointer; font-size: 14px;
+  }
+  button:hover:not(:disabled) { filter: brightness(1.1); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  button.ghost {
+    background: var(--panel); color: var(--text); border: 1px solid var(--border);
+    font-weight: 400; padding: 6px 12px; font-size: 13px;
+  }
+
+  .quick {
+    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px;
+  }
+
+  .result {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; margin-bottom: 16px;
+  }
+  .result.empty { color: var(--muted); text-align: center; padding: 60px 20px; }
+  .result.loading { color: var(--accent); text-align: center; padding: 60px 20px; }
+  .result.error { border-color: var(--error); }
+  .result.error .label { color: var(--error); }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { background: var(--panel-2); border-radius: 8px; padding: 14px; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+           color: var(--muted); margin-bottom: 6px; }
+  .big { font-size: 22px; font-weight: 600; }
+  .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+
+  .scores { margin: 14px 0; }
+  .score-row {
+    display: grid; grid-template-columns: 130px 1fr 60px;
+    align-items: center; gap: 10px; margin: 4px 0;
+    font-size: 12px;
+  }
+  .score-row .name { color: var(--muted); }
+  .score-row.winner .name { color: var(--accent-2); font-weight: 600; }
+  .score-row .bar {
+    height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden;
+  }
+  .score-row .bar > div {
+    height: 100%; background: var(--bar-fill);
+    transition: width 0.3s ease;
+  }
+  .score-row .val { text-align: right; font-family: "SF Mono", Menlo, monospace; }
+
+  pre {
+    background: #0a0e12; border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; margin: 0; overflow-x: auto; font-size: 12px;
+    font-family: "SF Mono", Menlo, Consolas, monospace; color: #c9d1d9;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  .footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 32px; }
+  .arrow { color: var(--muted); margin: 0 6px; }
+
+  details { margin-top: 12px; }
+  summary { cursor: pointer; color: var(--muted); font-size: 12px; user-select: none; }
+  summary:hover { color: var(--text); }
+
+  .orders { margin-top: 10px; }
+  .order-card {
+    background: #0a0e12; border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; margin: 6px 0;
+    display: grid; grid-template-columns: 70px 1fr auto auto; gap: 10px;
+    align-items: center; font-size: 13px;
+  }
+  .order-card .id { color: var(--accent); font-family: "SF Mono", monospace; }
+  .order-card .name { font-weight: 600; }
+  .order-card .meta { color: var(--muted); font-size: 12px; text-align: right; }
+  .order-card .courier {
+    padding: 2px 8px; background: var(--panel); border-radius: 4px;
+    font-size: 11px; color: var(--accent-2);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>📦 Parcel Tracker</h1>
+  <span class="subtitle">BERT inference on ESP32-S3 over USB serial</span>
+  <span id="status-pill" class="pill"><span class="dot"></span><span id="status-text">connecting…</span></span>
+</header>
+
+<div class="input-row">
+  <input id="cmd" type="text" placeholder='Type a natural-language command, e.g. "show me all orders"'
+         autocomplete="off" autofocus />
+  <button id="send">Send</button>
+</div>
+
+<div class="quick" id="quick-row">
+  <!-- populated from JS -->
+</div>
+
+<div id="result" class="result empty">
+  Type a command above to send it to the ESP32 for on-device classification.
+</div>
+
+<div class="footer">
+  Latency includes 4.2 MB BERT-tiny model inference at <code>seq_len=64</code>
+  with custom hybrid FP32/INT8 FullyConnected kernel.
+</div>
+
+</div>
+
+<script>
+const PHRASES = [
+  "show me all orders",
+  "view order 101",
+  "filter by depot FadEx",
+  "show history",
+  "calculate the cost of order 101",
+  "search for order with ID 123",
+];
+
+const cmd = document.getElementById("cmd");
+const sendBtn = document.getElementById("send");
+const quick = document.getElementById("quick-row");
+const out = document.getElementById("result");
+const statusPill = document.getElementById("status-pill");
+const statusText = document.getElementById("status-text");
+
+PHRASES.forEach(p => {
+  const b = document.createElement("button");
+  b.className = "ghost";
+  b.textContent = p;
+  b.onclick = () => { cmd.value = p; cmd.focus(); };
+  quick.appendChild(b);
+});
+
+cmd.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") run();
+});
+sendBtn.onclick = run;
+
+async function refreshStatus() {
+  try {
+    const r = await fetch("/api/status");
+    const j = await r.json();
+    if (j.serial_disabled) {
+      statusPill.className = "pill error";
+      statusText.textContent = "serial disabled";
+    } else if (j.connected) {
+      statusPill.className = "pill online";
+      const used = j.arena_used >= 0 ? `${(j.arena_used / 1024).toFixed(0)} KB arena` : "ready";
+      statusText.textContent = `ESP32 online · ${used}`;
+    } else if (j.last_error) {
+      statusPill.className = "pill error";
+      statusText.textContent = "ESP32 offline";
+    } else {
+      statusPill.className = "pill";
+      statusText.textContent = "not connected";
+    }
+  } catch (e) {
+    statusPill.className = "pill error";
+    statusText.textContent = "server unreachable";
+  }
+}
+refreshStatus();
+setInterval(refreshStatus, 5000);
+
+async function run() {
+  const text = cmd.value.trim();
+  if (!text) return;
+  sendBtn.disabled = true;
+  out.className = "result loading";
+  out.innerHTML = `<div>⌛ Running BERT inference on device…</div>
+                   <div style="color:var(--muted);font-size:12px;margin-top:8px">
+                     ~3.7s with current model</div>`;
+
+  try {
+    const r = await fetch("/api/run", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text}),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      renderError(j.error || `HTTP ${r.status}`, j.hint);
+      return;
+    }
+    render(j);
+    refreshStatus();
+  } catch (e) {
+    renderError(e.message);
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+function renderError(msg, hint) {
+  out.className = "result error";
+  out.innerHTML = `<div class="label">Error</div>
+                   <div style="font-weight:600">${escapeHtml(msg)}</div>
+                   ${hint ? `<div style="color:var(--muted);margin-top:6px">${escapeHtml(hint)}</div>` : ""}`;
+}
+
+function render(j) {
+  out.className = "result";
+  const intent = j.intent || "?";
+  const score = j.score != null ? j.score.toFixed(2) : "—";
+  const ms = j.latency_ms != null ? `${j.latency_ms} ms` : "—";
+
+  let html = `
+    <div class="grid">
+      <div class="card">
+        <div class="label">Predicted intent</div>
+        <div class="big" style="color:var(--accent-2)">${escapeHtml(intent)}</div>
+        <div style="color:var(--muted);font-size:12px">logit=${score}</div>
+      </div>
+      <div class="card">
+        <div class="label">On-device latency</div>
+        <div class="big">${ms}</div>
+        <div style="color:var(--muted);font-size:12px">BERT-tiny · seq_len=64</div>
+      </div>
+    </div>
+
+    <div class="scores">
+      <div class="label">Logits across all 6 intents</div>
+      ${renderScores(j.scores, intent)}
+    </div>
+  `;
+
+  if (j.entities && Object.keys(j.entities).length) {
+    html += `<div class="card" style="margin-top:12px">
+               <div class="label">Extracted entities</div>
+               <div class="mono">${escapeHtml(JSON.stringify(j.entities))}</div>
+             </div>`;
+  }
+
+  html += `<div class="card" style="margin-top:12px">
+             <div class="label">
+               You typed
+               <span class="arrow">→</span> ESP32 emitted JSON
+               <span class="arrow">→</span> Server replied
+             </div>
+             <div style="margin:8px 0">${renderResponse(j.response)}</div>
+             <details>
+               <summary>Show raw payloads</summary>
+               <div style="margin-top:8px">
+                 <div class="label">Request from ESP32</div>
+                 <pre>${escapeHtml(prettyJson(j.request))}</pre>
+                 <div class="label" style="margin-top:8px">Server response</div>
+                 <pre>${escapeHtml(prettyJson(j.response))}</pre>
+               </div>
+             </details>
+           </div>`;
+
+  out.innerHTML = html;
+}
+
+function renderScores(scores, winner) {
+  if (!scores || !Object.keys(scores).length) return "<em style='color:var(--muted)'>no scores</em>";
+  const entries = Object.entries(scores);
+  const min = Math.min(...entries.map(([,v]) => v));
+  const max = Math.max(...entries.map(([,v]) => v));
+  const range = Math.max(0.1, max - min);
+  return entries.map(([k, v]) => {
+    const pct = ((v - min) / range) * 100;
+    const isWin = k === winner;
+    return `<div class="score-row ${isWin ? "winner" : ""}">
+              <div class="name">${escapeHtml(k)}</div>
+              <div class="bar"><div style="width:${pct.toFixed(1)}%"></div></div>
+              <div class="val">${v >= 0 ? "+" : ""}${v.toFixed(2)}</div>
+            </div>`;
+  }).join("");
+}
+
+function renderResponse(resp) {
+  if (!resp || typeof resp !== "object") return "<em>no response</em>";
+  if (resp.error) return `<span style="color:var(--error)">⚠ ${escapeHtml(resp.error)}</span>`;
+  // Try a friendly rendering for common shapes.
+  if (Array.isArray(resp.orders)) {
+    const head = `<div style="font-weight:600;margin-bottom:6px">${resp.count ?? resp.orders.length} order${resp.orders.length === 1 ? "" : "s"}${resp.depot ? ` at ${escapeHtml(resp.depot)}` : ""}</div>`;
+    return head + `<div class="orders">${resp.orders.map(orderCard).join("")}</div>`;
+  }
+  if (resp.order) return `<div class="orders">${orderCard(resp.order)}</div>`;
+  if (resp.intent === "CALCULATE_COST" && resp.cost_gbp != null) {
+    return `<div style="font-size:18px"><strong>£${resp.cost_gbp.toFixed(2)}</strong>
+            for ${resp.weight_kg} kg via ${escapeHtml(resp.courier_name || "?")}
+            ${resp.order_id ? `(order #${resp.order_id})` : ""}</div>`;
+  }
+  return `<pre>${escapeHtml(prettyJson(resp))}</pre>`;
+}
+
+function orderCard(o) {
+  const status = o.computed_status || (o.status === 1 ? "delivered" : "active");
+  const time = o.time_remaining ? `${o.time_remaining} left` :
+               o.time_since ? o.time_since :
+               (o.delivery_time || "");
+  return `<div class="order-card">
+    <div class="id">#${o.package_id}</div>
+    <div><div class="name">${escapeHtml(o.name || "")}</div>
+         <div class="meta" style="text-align:left">${escapeHtml(time)}</div></div>
+    <div class="courier">${escapeHtml(o.courier_name || ("courier " + (o.courier ?? "?")))}</div>
+    <div class="meta">${o.weight} kg · £${(o.cost ?? 0).toFixed(2)}</div>
+  </div>`;
+}
+
+function prettyJson(x) {
+  try { return JSON.stringify(x, null, 2); }
+  catch { return String(x); }
+}
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+</script>
+</body>
+</html>

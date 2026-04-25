@@ -14,6 +14,26 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 # Larger main task stack for TFLite Micro interpreter work
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384
 
+# Build the app at -O2 (perf) instead of the default -Og (debug). The hot
+# inner loop of the custom hybrid FC kernel is scalar FP — every cycle
+# matters. -O2 keeps assertions on but unrolls/inlines aggressively.
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+
+# Drop runtime assert() bounds checks. They fire on every TFLM tensor
+# access — small per-call cost that adds up across millions of MACs.
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_DISABLE=y
+
+# Run the CPU at its rated 240 MHz (default is 160 MHz). 1.5× clock for
+# free, applies to every cycle of inference and serial polling.
+CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240=y
+
+# Bigger D-cache (max 64 KB, 64-byte lines) for the PSRAM tensor arena.
+# Activations are read across every layer; a hit is ~4 cycles vs ~30+
+# cycles of octal-PSRAM latency on a miss. Larger lines amortise burst
+# reads better for the sequential matmul access pattern.
+CONFIG_ESP32S3_DATA_CACHE_64KB=y
+CONFIG_ESP32S3_DATA_CACHE_LINE_64B=y
+
 # Enable PSRAM if available on your board
 CONFIG_ESP32S3_SPIRAM_SUPPORT=y
 CONFIG_SPIRAM=y
