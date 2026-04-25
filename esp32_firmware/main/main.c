@@ -42,11 +42,11 @@
 #define IDX_CALCULATE_COST   4
 #define IDX_SEARCH_ORDER     5
 
-/* Below this top-2 logit margin we treat the prediction as ambiguous and
- * let the keyword fallback override. Empirically the well-trained phrases
- * win by ≥1.0; "show delivered orders" came out at 0.02. 0.30 is a safe
- * threshold that won't trigger on confident predictions. */
-#define INTENT_MARGIN_THRESHOLD  0.30f
+/* SEARCH_ORDER is deactivated at runtime: the model still emits a logit
+ * for it (visible in the scores trace for transparency) but the runner-up
+ * is taken instead. VIEW_ORDER's handler now searches active+history so
+ * the two are functionally identical anyway, and removing SEARCH_ORDER
+ * from the user-visible output makes the demo flow cleaner.            */
 
 /* Lowercase-aware substring search (input is small so brute force is fine). */
 static int contains_ci(const char *hay, const char *needle) {
@@ -65,52 +65,67 @@ static int contains_ci(const char *hay, const char *needle) {
     return 0;
 }
 
-/* If the top-2 logits are within INTENT_MARGIN_THRESHOLD, fall back to a
- * tiny keyword rule. This is a standard hybrid-NLP pattern: BERT for fuzzy
- * cases, rules for unambiguous keywords. Returns the (possibly overridden)
- * intent index; sets *overridden to 1 if a rule fired. */
-static int keyword_fallback(const char *text, int intent_idx, const float *scores,
-                            int *overridden) {
-    *overridden = 0;
+/* Hybrid-NLP guard layer applied AFTER BERT argmax:
+ *
+ *   1. Suppress SEARCH_ORDER if it won — pick the highest-scoring other class.
+ *      The two intents are functionally identical now and the model is the
+ *      only thing that picks one over the other; making the choice for it
+ *      gives a cleaner UX.
+ *
+ *   2. High-precision keyword rules. Each of these words has a single
+ *      unambiguous meaning in the parcel-tracking domain, so we always
+ *      apply them rather than gating on a margin threshold. This catches
+ *      out-of-distribution phrasings the trained model has no exposure to
+ *      ("show upcoming orders", "any in-transit packages") as well as
+ *      ambiguous ones ("show delivered orders").
+ *
+ * Returns the final intent index. Sets *original_intent to whatever BERT
+ * originally picked (so the UI can show "BERT said X, rule layer said Y"),
+ * or -1 if nothing was overridden.                                       */
+static int post_classify(const char *text, int intent_idx, const float *scores,
+                         int *original_intent) {
+    *original_intent = -1;
 
-    /* Find top-2 logits without sorting the array. */
-    int best = intent_idx;
-    float best_s = scores[best];
-    float second_s = -1e30f;
-    for (int i = 0; i < NUM_INTENTS; i++) {
-        if (i == best) continue;
-        if (scores[i] > second_s) second_s = scores[i];
-    }
-    float margin = best_s - second_s;
-    if (margin >= INTENT_MARGIN_THRESHOLD) {
-        return intent_idx;  /* model is confident — trust it */
+    /* Step 1: SEARCH_ORDER suppression. */
+    if (intent_idx == IDX_SEARCH_ORDER) {
+        int runner = -1;
+        float runner_s = -1e30f;
+        for (int i = 0; i < NUM_INTENTS; i++) {
+            if (i == IDX_SEARCH_ORDER) continue;
+            if (scores[i] > runner_s) { runner_s = scores[i]; runner = i; }
+        }
+        *original_intent = IDX_SEARCH_ORDER;
+        intent_idx = runner;
     }
 
-    /* Ambiguous prediction. Walk a small list of high-signal keywords and
-     * override if any clearly map to a specific intent. Order matters
-     * (more specific first). */
+    /* Step 2: high-precision keyword rules. Most-specific first.       *
+     * If a rule fires we record the original ONLY if it actually flips */
+    int rule_pick = -1;
     if (contains_ci(text, "delivered") || contains_ci(text, "history")
         || contains_ci(text, "past")    || contains_ci(text, "previous")
         || contains_ci(text, "archive")) {
-        *overridden = 1;
-        return IDX_SHOW_HISTORY;
+        rule_pick = IDX_SHOW_HISTORY;
     }
-    if (contains_ci(text, "depot") || contains_ci(text, "courier")) {
-        *overridden = 1;
-        return IDX_FILTER_BY_DEPOT;
+    else if (contains_ci(text, "upcoming") || contains_ci(text, "in transit")
+          || contains_ci(text, "in-transit")|| contains_ci(text, "in flight")
+          || contains_ci(text, "active")    || contains_ci(text, "current")
+          || contains_ci(text, "pending")   || contains_ci(text, "outstanding")) {
+        rule_pick = IDX_VIEW_ALL;
     }
-    if (contains_ci(text, "cost") || contains_ci(text, "price")
-        || contains_ci(text, "how much")) {
-        *overridden = 1;
-        return IDX_CALCULATE_COST;
+    else if (contains_ci(text, "depot") || contains_ci(text, "courier")) {
+        rule_pick = IDX_FILTER_BY_DEPOT;
     }
-    if (contains_ci(text, "all ") || contains_ci(text, "every ")
-        || contains_ci(text, "list everything")) {
-        *overridden = 1;
-        return IDX_VIEW_ALL;
+    else if (contains_ci(text, "cost") || contains_ci(text, "price")
+          || contains_ci(text, "how much")) {
+        rule_pick = IDX_CALCULATE_COST;
     }
 
-    return intent_idx;  /* no rule fired, keep the model's pick */
+    if (rule_pick >= 0 && rule_pick != intent_idx) {
+        if (*original_intent < 0) *original_intent = intent_idx;
+        intent_idx = rule_pick;
+    }
+
+    return intent_idx;
 }
 
 /* ── Configuration ─────────────────────────────────────────────────────── */
@@ -294,17 +309,15 @@ void app_main(void)
             continue;
         }
 
-        /* Hybrid disambiguation: if the model's top-2 logits are too close,
-         * fall back to keyword rules. This catches phrasings outside the
-         * training distribution (e.g. "show delivered orders" tied between
-         * SEARCH_ORDER and SHOW_HISTORY). */
-        int overridden = 0;
-        int orig_idx = intent_idx;
-        intent_idx = keyword_fallback(input, intent_idx, scores, &overridden);
+        /* Apply the post-classification guard layer:
+         *  - SEARCH_ORDER (deactivated) → pick the runner-up
+         *  - High-precision keyword rules ("upcoming"→VIEW_ALL etc.)         */
+        int orig_idx = -1;
+        intent_idx = post_classify(input, intent_idx, scores, &orig_idx);
         const char *intent = inference_intent_label(intent_idx);
 
         /* Log scores + timing */
-        if (overridden) {
+        if (orig_idx >= 0) {
             printf("Intent: %s (overridden from %s by keyword rule) — %lld ms\n",
                    intent, inference_intent_label(orig_idx),
                    (long long)(t1 - t0));

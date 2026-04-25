@@ -95,6 +95,8 @@
   }
   .score-row .name { color: var(--muted); }
   .score-row.winner .name { color: var(--accent-2); font-weight: 600; }
+  .score-row.deactivated { opacity: 0.5; }
+  .score-row.deactivated .bar > div { background: var(--muted); }
   .score-row .bar {
     height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden;
   }
@@ -324,8 +326,16 @@ function renderScores(scores, winner) {
   return entries.map(([k, v]) => {
     const pct = ((v - min) / range) * 100;
     const isWin = k === winner;
-    return `<div class="score-row ${isWin ? "winner" : ""}">
-              <div class="name">${escapeHtml(k)}</div>
+    // SEARCH_ORDER is deactivated at the firmware level (its handler is now
+    // identical to VIEW_ORDER's). The model still emits a logit for it for
+    // transparency, but it's never the chosen intent.
+    const isDeactivated = k === "SEARCH_ORDER";
+    const classes = ["score-row"];
+    if (isWin) classes.push("winner");
+    if (isDeactivated) classes.push("deactivated");
+    const tag = isDeactivated ? ' <span style="color:var(--muted);font-size:10px">(deactivated)</span>' : '';
+    return `<div class="${classes.join(" ")}">
+              <div class="name">${escapeHtml(k)}${tag}</div>
               <div class="bar"><div style="width:${pct.toFixed(1)}%"></div></div>
               <div class="val">${v >= 0 ? "+" : ""}${v.toFixed(2)}</div>
             </div>`;
