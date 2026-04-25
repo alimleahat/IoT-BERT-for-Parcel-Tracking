@@ -6,6 +6,7 @@
  */
 
 #include "inference.h"
+#include "tokenizer.h"   // for MAX_SEQ_LEN
 #include "custom_gelu.h"
 #include "custom_fc.h"
 
@@ -31,18 +32,14 @@ static const char *INTENT_LABELS[NUM_INTENTS] = {
 };
 
 /* ── Tensor arena ──────────────────────────────────────────────────────
- * Empirically AllocateTensors() reports ~373 KB used for bert-tiny at
- * seq_len=64.  We allocate 512 KB so we can try fitting the arena into
- * the chip's internal DRAM (~320 KB available, but with luck and a small
- * arena we can place activations close to the FPU).  If MALLOC_CAP_INTERNAL
- * fails (most likely outcome on a 320 KB DRAM budget) we fall back to
- * MALLOC_CAP_SPIRAM, which is what we used before.
- *
- * Activations dominate inference latency because every layer reads/writes
- * them.  Internal DRAM is ~10× faster than PSRAM, so this is the single
- * biggest win available without rewriting kernels.
+ * At seq_len=32 AllocateTensors() reports ~197 KB actually used.
+ * 256 KB fits inside the chip's largest contiguous internal DRAM block
+ * (~334 KiB at boot) with comfortable margin, so the arena can live in
+ * fast internal RAM. PSRAM stays as a fallback if DRAM is tighter than
+ * expected at boot — every cycle of activation read/write is then ~10×
+ * faster than going over the octal-SPI bus.
  */
-#define TENSOR_ARENA_SIZE  (512 * 1024)
+#define TENSOR_ARENA_SIZE  (256 * 1024)
 
 static uint8_t *tensor_arena = nullptr;
 static tflite::MicroInterpreter *interpreter = nullptr;
@@ -140,8 +137,8 @@ extern "C" int inference_run(const int32_t *input_ids, const int32_t *attention_
     TfLiteTensor *in_ids  = interpreter->input(0);
     TfLiteTensor *in_mask = interpreter->input(1);
 
-    memcpy(in_ids->data.i32,  input_ids,      64 * sizeof(int32_t));
-    memcpy(in_mask->data.i32, attention_mask,  64 * sizeof(int32_t));
+    memcpy(in_ids->data.i32,  input_ids,      MAX_SEQ_LEN * sizeof(int32_t));
+    memcpy(in_mask->data.i32, attention_mask, MAX_SEQ_LEN * sizeof(int32_t));
 
     /* Run inference */
     TfLiteStatus status = interpreter->Invoke();

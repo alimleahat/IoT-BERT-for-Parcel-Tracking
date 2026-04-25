@@ -1,31 +1,31 @@
 phrase,rep,intent,latency_ms
-show me all orders,1,VIEW_ALL,1240
-show me all orders,2,VIEW_ALL,1240
-show me all orders,3,VIEW_ALL,1240
-show me all orders,4,VIEW_ALL,1240
-show me all orders,5,VIEW_ALL,1240
-view order 101,1,VIEW_ORDER,1230
-view order 101,2,VIEW_ORDER,1230
-view order 101,3,VIEW_ORDER,1230
-view order 101,4,VIEW_ORDER,1230
-view order 101,5,VIEW_ORDER,1230
-filter by depot FadEx,1,FILTER_BY_DEPOT,1230
-filter by depot FadEx,2,FILTER_BY_DEPOT,1230
-filter by depot FadEx,3,FILTER_BY_DEPOT,1230
-filter by depot FadEx,4,FILTER_BY_DEPOT,1230
-filter by depot FadEx,5,FILTER_BY_DEPOT,1230
-show history,1,SHOW_HISTORY,1230
-show history,2,SHOW_HISTORY,1230
-show history,3,SHOW_HISTORY,1230
-show history,4,SHOW_HISTORY,1230
-show history,5,SHOW_HISTORY,1230
-calculate the cost of order 101,1,CALCULATE_COST,1230
-calculate the cost of order 101,2,CALCULATE_COST,1230
-calculate the cost of order 101,3,CALCULATE_COST,1230
-calculate the cost of order 101,4,CALCULATE_COST,1230
-calculate the cost of order 101,5,CALCULATE_COST,1230
-search for order with ID 123,1,SEARCH_ORDER,1230
-search for order with ID 123,2,SEARCH_ORDER,1230
-search for order with ID 123,3,SEARCH_ORDER,1230
-search for order with ID 123,4,SEARCH_ORDER,1230
-search for order with ID 123,5,SEARCH_ORDER,1230
+show me all orders,1,VIEW_ALL,510
+show me all orders,2,VIEW_ALL,510
+show me all orders,3,VIEW_ALL,510
+show me all orders,4,VIEW_ALL,510
+show me all orders,5,VIEW_ALL,510
+view order 101,1,VIEW_ORDER,510
+view order 101,2,VIEW_ORDER,510
+view order 101,3,VIEW_ORDER,510
+view order 101,4,VIEW_ORDER,510
+view order 101,5,VIEW_ORDER,510
+filter by depot FadEx,1,FILTER_BY_DEPOT,510
+filter by depot FadEx,2,FILTER_BY_DEPOT,510
+filter by depot FadEx,3,FILTER_BY_DEPOT,510
+filter by depot FadEx,4,FILTER_BY_DEPOT,510
+filter by depot FadEx,5,FILTER_BY_DEPOT,510
+show history,1,SHOW_HISTORY,510
+show history,2,SHOW_HISTORY,510
+show history,3,SHOW_HISTORY,510
+show history,4,SHOW_HISTORY,510
+show history,5,SHOW_HISTORY,510
+calculate the cost of order 101,1,CALCULATE_COST,510
+calculate the cost of order 101,2,CALCULATE_COST,510
+calculate the cost of order 101,3,CALCULATE_COST,510
+calculate the cost of order 101,4,CALCULATE_COST,510
+calculate the cost of order 101,5,CALCULATE_COST,510
+search for order with ID 123,1,SEARCH_ORDER,510
+search for order with ID 123,2,SEARCH_ORDER,510
+search for order with ID 123,3,SEARCH_ORDER,510
+search for order with ID 123,4,SEARCH_ORDER,510
+search for order with ID 123,5,SEARCH_ORDER,510

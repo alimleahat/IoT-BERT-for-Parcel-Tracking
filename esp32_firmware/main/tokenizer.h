@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define MAX_SEQ_LEN   64
+#define MAX_SEQ_LEN   32
 #define VOCAB_SIZE    30522
 #define PAD_ID        0
 #define UNK_ID        100
