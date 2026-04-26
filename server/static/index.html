@@ -3,239 +3,1006 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Parcel Tracker — On-device BERT</title>
+<title>parcel-tracker · bert-tiny on esp32-s3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    --bg: #0f1419;
-    --panel: #1a2129;
-    --panel-2: #232b35;
-    --border: #2c3540;
-    --text: #e6edf3;
-    --muted: #8b95a1;
-    --accent: #4cc2ff;
-    --accent-2: #79e0a4;
-    --warn: #f0b341;
-    --error: #ff7b72;
-    --bar-bg: #2c3540;
-    --bar-fill: linear-gradient(90deg, #4cc2ff, #79e0a4);
-  }
-  * { box-sizing: border-box; }
-  html, body {
-    margin: 0; padding: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
-    font-size: 14px;
-    line-height: 1.5;
-    height: 100%;
-  }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+/* ── design tokens (locked from wireframes.html) ─────────────────────── */
+:root{
+  --bg: oklch(0.16 0.005 250);
+  --surface: oklch(0.20 0.005 250);
+  --surface-2: oklch(0.235 0.006 250);
+  --line: oklch(0.32 0.008 250);
+  --line-soft: oklch(0.26 0.006 250);
+  --text: oklch(0.92 0.005 250);
+  --dim: oklch(0.62 0.01 250);
+  --dimmer: oklch(0.45 0.008 250);
+  --accent: oklch(0.86 0.17 152);     /* signal green */
+  --accent-bg: oklch(0.86 0.17 152 / 0.12);
+  --amber: oklch(0.82 0.14 75);
+  --amber-bg: oklch(0.82 0.14 75 / 0.12);
+  --error: oklch(0.65 0.20 25);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  font-size:13px;
+  line-height:1.5;
+  overflow:hidden;
+}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
+.num{font-variant-numeric:tabular-nums;}
+.label{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:9px;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--dim);
+  font-weight:500;
+}
+.stub{color:var(--dimmer);}
+.accent{color:var(--accent);}
+.hr{height:1px;background:var(--line-soft);width:100%;}
+.grow{flex:1;min-width:0;}
 
-  header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-  h1 { font-size: 22px; margin: 0; font-weight: 600; }
-  .subtitle { color: var(--muted); font-size: 13px; }
-  .pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 4px 10px; background: var(--panel); border: 1px solid var(--border);
-    border-radius: 999px; font-size: 12px; color: var(--muted);
-  }
-  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-  .pill.online .dot { background: var(--accent-2); box-shadow: 0 0 6px var(--accent-2); }
-  .pill.error .dot { background: var(--error); }
+/* ── app shell ───────────────────────────────────────────────────────── */
+.app{
+  display:grid;
+  grid-template-rows:auto auto auto 1fr;
+  height:100vh;
+  max-width:1440px;
+  margin:0 auto;
+  border-left:1px solid var(--line-soft);
+  border-right:1px solid var(--line-soft);
+}
 
-  .input-row {
-    display: flex; gap: 8px; margin-bottom: 12px;
-  }
-  input[type=text] {
-    flex: 1; padding: 12px 14px;
-    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
-    color: var(--text); font-size: 15px; font-family: inherit;
-  }
-  input[type=text]:focus { outline: none; border-color: var(--accent); }
-  button {
-    padding: 12px 20px;
-    background: var(--accent); color: #0f1419;
-    border: 0; border-radius: 8px; font-weight: 600;
-    cursor: pointer; font-size: 14px;
-  }
-  button:hover:not(:disabled) { filter: brightness(1.1); }
-  button:disabled { opacity: 0.5; cursor: not-allowed; }
-  button.ghost {
-    background: var(--panel); color: var(--text); border: 1px solid var(--border);
-    font-weight: 400; padding: 6px 12px; font-size: 13px;
-  }
+/* ── header ──────────────────────────────────────────────────────────── */
+.header{
+  display:flex;align-items:center;gap:14px;
+  padding:13px 20px;
+  border-bottom:1px solid var(--line-soft);
+}
+.brand-mark{width:14px;height:14px;background:var(--accent);}
+.brand-name{font-weight:600;font-size:14px;letter-spacing:-0.005em;}
+.brand-sub{font-size:11px;color:var(--dimmer);font-family:"IBM Plex Mono";}
+.pill{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid var(--line);
+  padding:5px 11px;
+  color:var(--dim);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.pill .dot{width:6px;height:6px;background:var(--dim);border-radius:50%;}
+.pill.online{color:var(--text);border-color:var(--accent);}
+.pill.online .dot{background:var(--accent);box-shadow:0 0 8px var(--accent);}
+.pill.error{color:var(--error);border-color:var(--error);}
+.pill.error .dot{background:var(--error);}
+.header-btn{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--text);
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  letter-spacing:.06em;
+  padding:6px 12px;
+  cursor:pointer;
+  transition:all .12s;
+}
+.header-btn:hover{border-color:var(--accent);color:var(--accent);}
+.header-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-bg);}
 
-  .quick {
-    display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 24px;
-  }
+/* ── manifest strip (top KPI row) ────────────────────────────────────── */
+.manifest{
+  display:flex;
+  border-bottom:1px solid var(--line);
+}
+.manifest-cell{
+  padding:14px 18px;
+  border-right:1px solid var(--line-soft);
+  flex:1;
+  min-width:0;
+}
+.manifest-cell:last-child{border-right:0;}
+.manifest-cell.lat{flex:1.55;}
+.manifest-cell .big{
+  font-family:"IBM Plex Sans";
+  font-weight:600;
+  letter-spacing:-0.025em;
+  color:var(--accent);
+  line-height:1;
+  margin-top:8px;
+  font-variant-numeric:tabular-nums;
+}
+.manifest-cell.lat .big{font-size:54px;}
+.manifest-cell:not(.lat) .big{font-size:22px;}
+.manifest-cell .big .unit{
+  color:var(--dim);
+  font-weight:400;
+  margin-left:6px;
+  font-size:0.4em;
+  letter-spacing:0;
+}
+.manifest-cell.lat .big .unit{font-size:18px;}
+.manifest-cell .big.text{color:var(--text);}
+.manifest-cell .sub{font-size:10px;color:var(--dimmer);margin-top:6px;font-family:"IBM Plex Mono";letter-spacing:.04em;}
+.manifest-cell.amber{background:var(--amber-bg);}
+.manifest-cell.amber .big{color:var(--amber);}
+.manifest-cell.amber .sub{color:var(--amber);}
 
-  .result {
-    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
-    padding: 20px; margin-bottom: 16px;
-  }
-  .result.empty { color: var(--muted); text-align: center; padding: 60px 20px; }
-  .result.loading { color: var(--accent); text-align: center; padding: 60px 20px; }
-  .result.error { border-color: var(--error); }
-  .result.error .label { color: var(--error); }
+/* ── input section ───────────────────────────────────────────────────── */
+.input-section{
+  padding:13px 20px;
+  border-bottom:1px solid var(--line-soft);
+  display:flex;flex-direction:column;gap:10px;
+}
+.input-row{display:flex;gap:10px;align-items:center;}
+.input-prompt{color:var(--dim);font-family:"IBM Plex Mono";font-size:14px;}
+.input-box{
+  flex:1;
+  background:var(--surface);
+  border:1px solid var(--line);
+  padding:10px 12px;
+  color:var(--text);
+  font-family:"IBM Plex Mono";
+  font-size:13px;
+  outline:none;
+  transition:border-color .12s;
+}
+.input-box:focus{border-color:var(--accent);}
+.input-box::placeholder{color:var(--dimmer);}
+.send-btn{
+  border:1px solid var(--accent);
+  background:transparent;
+  color:var(--accent);
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  letter-spacing:.08em;
+  padding:9px 14px;
+  cursor:pointer;
+  transition:all .12s;
+}
+.send-btn:hover:not(:disabled){background:var(--accent);color:var(--bg);}
+.send-btn:disabled{opacity:.4;cursor:wait;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+.chips .label{margin-right:6px;}
+.chip{
+  border:1px solid var(--line);
+  padding:3px 8px;
+  color:var(--dim);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  cursor:pointer;
+  background:transparent;
+  transition:all .1s;
+  letter-spacing:.02em;
+}
+.chip:hover{border-color:var(--accent);color:var(--accent);}
 
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+/* ── main split: 7/5 logits | response ───────────────────────────────── */
+.main-split{display:flex;min-height:0;}
+.panel-left{
+  flex:7;
+  border-right:1px solid var(--line-soft);
+  padding:18px;
+  display:flex;flex-direction:column;gap:14px;
+  min-width:0;overflow-y:auto;
+}
+.panel-right{
+  flex:5;
+  padding:18px;
+  display:flex;flex-direction:column;gap:12px;
+  min-width:0;overflow-y:auto;
+}
+.row-baseline{display:flex;align-items:baseline;gap:10px;}
 
-  .card { background: var(--panel-2); border-radius: 8px; padding: 14px; }
-  .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-           color: var(--muted); margin-bottom: 6px; }
-  .big { font-size: 22px; font-weight: 600; }
-  .mono { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+/* ── logits ──────────────────────────────────────────────────────────── */
+.logit-row{
+  display:flex;align-items:center;gap:14px;
+  padding:5px 0;
+}
+.logit-row .key{
+  width:200px;
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  letter-spacing:.04em;
+  color:var(--text);
+  flex:none;
+}
+.logit-row .bar{
+  flex:1;
+  height:8px;
+  background:var(--line-soft);
+  position:relative;
+  overflow:hidden;
+}
+.logit-row .bar > .fill{
+  position:absolute;left:0;top:0;bottom:0;
+  background:var(--accent);
+  transition:width .3s cubic-bezier(.2,.7,.2,1);
+}
+.logit-row .val{
+  width:54px;
+  text-align:right;
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  color:var(--dim);
+  flex:none;
+  font-variant-numeric:tabular-nums;
+}
+.logit-row.winner .key{color:var(--accent);font-weight:500;}
+.logit-row.winner .val{color:var(--accent);}
+.logit-row.deactivated{opacity:.45;}
+.logit-row.deactivated .bar > .fill{background:var(--dim);}
+.logit-row .deactivated-tag{
+  font-family:"IBM Plex Mono";
+  font-size:9px;
+  color:var(--dimmer);
+  letter-spacing:.06em;
+  margin-left:4px;
+}
 
-  .scores { margin: 14px 0; }
-  .score-row {
-    display: grid; grid-template-columns: 130px 1fr 60px;
-    align-items: center; gap: 10px; margin: 4px 0;
-    font-size: 12px;
-  }
-  .score-row .name { color: var(--muted); }
-  .score-row.winner .name { color: var(--accent-2); font-weight: 600; }
-  .score-row.deactivated { opacity: 0.5; }
-  .score-row.deactivated .bar > div { background: var(--muted); }
-  .score-row .bar {
-    height: 6px; background: var(--bar-bg); border-radius: 3px; overflow: hidden;
-  }
-  .score-row .bar > div {
-    height: 100%; background: var(--bar-fill);
-    transition: width 0.3s ease;
-  }
-  .score-row .val { text-align: right; font-family: "SF Mono", Menlo, monospace; }
+/* ── response renderer ───────────────────────────────────────────────── */
+.panel-soft{
+  border:1px solid var(--line-soft);
+  background:transparent;
+}
+.panel-soft.no-pad{padding:0;}
+.order-list{display:flex;flex-direction:column;}
+.order-card{
+  display:grid;
+  grid-template-columns:auto 1fr auto auto;
+  gap:12px;align-items:center;
+  padding:9px 12px;
+  border-top:1px solid var(--line-soft);
+  font-size:12px;
+}
+.order-card:first-child{border-top:0;}
+.order-card .id{color:var(--accent);font-family:"IBM Plex Mono";font-weight:500;}
+.order-card .name-block .name{font-weight:600;color:var(--text);}
+.order-card .name-block .meta{color:var(--dimmer);font-size:10px;font-family:"IBM Plex Mono";letter-spacing:.02em;margin-top:1px;}
+.order-card .courier{
+  border:1px solid var(--line);
+  color:var(--dim);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  padding:2px 7px;
+  letter-spacing:.04em;
+}
+.order-card .num-meta{
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  color:var(--dim);
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.cost-callout{
+  text-align:center;
+  padding:32px 16px;
+  border:1px solid var(--line-soft);
+}
+.cost-callout .price{
+  font-family:"IBM Plex Sans";
+  font-size:64px;font-weight:600;
+  color:var(--accent);
+  letter-spacing:-0.025em;
+  font-variant-numeric:tabular-nums;
+  line-height:1;
+}
+.cost-callout .price .currency{font-size:42px;color:var(--dim);font-weight:400;margin-right:4px;}
+.cost-callout .breakdown{
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  color:var(--dim);
+  margin-top:14px;
+  letter-spacing:.04em;
+}
+.history-banner{
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  color:var(--amber);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  padding:0 0 6px;
+}
+pre{
+  background:var(--surface);
+  border:1px solid var(--line-soft);
+  padding:10px 12px;
+  margin:0;
+  overflow:auto;
+  color:var(--text);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  line-height:1.55;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
 
-  pre {
-    background: #0a0e12; border: 1px solid var(--border); border-radius: 6px;
-    padding: 10px 12px; margin: 0; overflow-x: auto; font-size: 12px;
-    font-family: "SF Mono", Menlo, Consolas, monospace; color: #c9d1d9;
-    white-space: pre-wrap; word-break: break-word;
-  }
+/* ── empty / loading / error states ──────────────────────────────────── */
+.empty-card{
+  border:1px dashed var(--line-soft);
+  color:var(--dimmer);
+  text-align:center;
+  padding:40px 20px;
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  letter-spacing:.08em;
+}
+.loading-state{
+  border:1px solid var(--line-soft);
+  color:var(--accent);
+  padding:32px 20px;
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  letter-spacing:.08em;
+  display:flex;align-items:center;gap:12px;justify-content:center;
+}
+.loading-state .pulse{
+  display:inline-block;
+  width:8px;height:8px;
+  background:var(--accent);
+  border-radius:50%;
+  animation:pulse 1.1s infinite;
+}
+@keyframes pulse{0%,100%{opacity:.25;}50%{opacity:1;box-shadow:0 0 10px var(--accent);}}
+.error-card{
+  border:1px solid var(--error);
+  background:oklch(0.65 0.20 25 / 0.07);
+  color:var(--error);
+  padding:14px;
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+}
 
-  .footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 32px; }
-  .arrow { color: var(--muted); margin: 0 6px; }
+/* ── wire protocol panel ─────────────────────────────────────────────── */
+.wire-panel{display:flex;flex-direction:column;gap:8px;}
+.wire-summary{
+  border:1px solid var(--line-soft);
+  padding:10px 12px;
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  color:var(--dim);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.wire-summary .arrow{color:var(--accent);margin:0 6px;}
+details.wire-details summary{
+  cursor:pointer;
+  color:var(--dim);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  letter-spacing:.06em;
+  list-style:none;
+  user-select:none;
+  text-transform:uppercase;
+}
+details.wire-details summary::before{content:"▸ ";color:var(--dimmer);}
+details.wire-details[open] summary::before{content:"▾ ";color:var(--accent);}
+details.wire-details summary:hover{color:var(--accent);}
+details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap:8px;}
 
-  details { margin-top: 12px; }
-  summary { cursor: pointer; color: var(--muted); font-size: 12px; user-select: none; }
-  summary:hover { color: var(--text); }
+/* ── drawers ─────────────────────────────────────────────────────────── */
+.drawer{
+  position:fixed;top:0;bottom:0;
+  width:380px;
+  background:var(--bg);
+  z-index:50;
+  transition:transform .28s cubic-bezier(.2,.7,.2,1);
+  display:flex;flex-direction:column;
+}
+.drawer-left{left:0;border-right:1px solid var(--line);transform:translateX(-100%);}
+.drawer-right{right:0;border-left:1px solid var(--line);transform:translateX(100%);}
+.drawer.open{transform:translateX(0);}
+.drawer-hd{
+  display:flex;align-items:center;gap:10px;
+  padding:14px 20px;
+  border-bottom:1px solid var(--line-soft);
+}
+.drawer-hd .label{margin:0;}
+.drawer-close{
+  margin-left:auto;
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--dim);
+  width:24px;height:24px;
+  cursor:pointer;
+  font-size:14px;
+  line-height:1;
+  font-family:"IBM Plex Mono";
+}
+.drawer-close:hover{border-color:var(--accent);color:var(--accent);}
+.drawer-body{flex:1;overflow-y:auto;padding:18px 20px;}
 
-  .orders { margin-top: 10px; }
-  .order-card {
-    background: #0a0e12; border: 1px solid var(--border); border-radius: 6px;
-    padding: 10px 12px; margin: 6px 0;
-    display: grid; grid-template-columns: 70px 1fr auto auto; gap: 10px;
-    align-items: center; font-size: 13px;
-  }
-  .order-card .id { color: var(--accent); font-family: "SF Mono", monospace; }
-  .order-card .name { font-weight: 600; }
-  .order-card .meta { color: var(--muted); font-size: 12px; text-align: right; }
-  .order-card .courier {
-    padding: 2px 8px; background: var(--panel); border-radius: 4px;
-    font-size: 11px; color: var(--accent-2);
-  }
+/* tour-specific */
+.tour-progress{
+  display:flex;
+  height:2px;
+  background:var(--line-soft);
+}
+.tour-progress > i{
+  background:var(--accent);
+  transition:width .3s cubic-bezier(.2,.7,.2,1);
+}
+.tour-step-counter{
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  color:var(--dim);
+  letter-spacing:.1em;
+  margin-bottom:10px;
+}
+.tour-title{
+  font-size:20px;
+  font-weight:600;
+  line-height:1.2;
+  margin:0 0 14px;
+  letter-spacing:-0.015em;
+}
+.tour-narration{
+  color:var(--text);
+  margin:0 0 18px;
+  font-size:14px;
+  line-height:1.55;
+}
+.tour-detail-toggle{
+  background:transparent;
+  border:0;
+  color:var(--dim);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  cursor:pointer;
+  padding:0;
+  letter-spacing:.06em;
+  text-align:left;
+}
+.tour-detail-toggle:hover{color:var(--accent);}
+.tour-detail{
+  border:1px solid var(--line-soft);
+  background:var(--surface);
+  padding:12px 14px;
+  margin:8px 0 0;
+  font-size:12px;
+  line-height:1.55;
+  color:var(--dim);
+  display:none;
+}
+.tour-detail.open{display:block;}
+.tour-input-block{margin-top:18px;display:flex;flex-direction:column;gap:8px;}
+.tour-input-preview{
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  background:var(--surface);
+  padding:10px 12px;
+  border:1px solid var(--line-soft);
+  color:var(--text);
+  word-break:break-word;
+}
+.tour-input-preview .stub{color:var(--dim);}
+.tour-spotlight-tag{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:"IBM Plex Mono";
+  font-size:9px;
+  color:var(--accent);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  padding:4px 8px;
+  border:1px solid var(--accent);
+  background:var(--accent-bg);
+  margin-top:14px;
+  align-self:flex-start;
+}
+.tour-actions{
+  display:flex;
+  gap:8px;
+  padding:14px 20px;
+  border-top:1px solid var(--line-soft);
+  background:var(--surface);
+}
+.tour-actions button{
+  border:1px solid var(--line);
+  background:transparent;
+  color:var(--text);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  letter-spacing:.06em;
+  padding:8px 12px;
+  cursor:pointer;
+  transition:all .1s;
+  text-transform:uppercase;
+}
+.tour-actions button:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.tour-actions button.primary{
+  border-color:var(--accent);
+  color:var(--accent);
+}
+.tour-actions button.primary:hover:not(:disabled){background:var(--accent);color:var(--bg);}
+.tour-actions button:disabled{opacity:.35;cursor:not-allowed;}
+.tour-actions .grow{margin-left:auto;}
+
+/* run-button-inside-drawer-body */
+.tour-run-inline{
+  border:1px solid var(--accent);
+  background:transparent;
+  color:var(--accent);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  letter-spacing:.08em;
+  padding:9px 14px;
+  cursor:pointer;
+  text-transform:uppercase;
+  text-align:left;
+  transition:all .12s;
+}
+.tour-run-inline:hover:not(:disabled){background:var(--accent);color:var(--bg);}
+.tour-run-inline:disabled{opacity:.35;cursor:wait;}
+
+/* stats drawer */
+.stat-row{
+  padding:14px 0;
+  border-bottom:1px solid var(--line-soft);
+}
+.stat-row:last-child{border-bottom:0;}
+.stat-row .stat-headline{
+  font-family:"IBM Plex Sans";
+  font-size:24px;
+  font-weight:600;
+  color:var(--text);
+  letter-spacing:-0.01em;
+  font-variant-numeric:tabular-nums;
+  line-height:1.1;
+}
+.stat-row .stat-headline .unit{
+  color:var(--dim);
+  font-weight:400;
+  font-size:13px;
+  margin-left:5px;
+  letter-spacing:0;
+}
+.stat-row .stat-copy{
+  font-size:11px;
+  line-height:1.55;
+  color:var(--dim);
+  margin-top:6px;
+}
+.stat-row .stat-live-tag{
+  display:inline-block;
+  font-family:"IBM Plex Mono";
+  font-size:8px;
+  color:var(--accent);
+  letter-spacing:.1em;
+  margin-bottom:4px;
+  text-transform:uppercase;
+}
+
+/* ── inverse spotlight ───────────────────────────────────────────────── */
+.spotlight-wash{
+  position:fixed;
+  inset:0;
+  background:rgba(8,10,16,.62);
+  z-index:30;
+  pointer-events:none;
+  transition:opacity .25s;
+  opacity:0;
+}
+.spotlight-wash.on{opacity:1;}
+.spotlight-target{
+  position:relative;
+  z-index:35;
+  background:var(--bg);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 0 22px oklch(0.86 0.17 152 / 0.28);
+}
+.spotlight-arrow{
+  position:fixed;
+  z-index:36;
+  color:var(--accent);
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  letter-spacing:.12em;
+  pointer-events:none;
+  text-transform:uppercase;
+  display:none;
+  background:var(--bg);
+  padding:3px 8px;
+  border:1px solid var(--accent);
+  white-space:nowrap;
+}
+
+/* ── footer hint ─────────────────────────────────────────────────────── */
+.kbhints{
+  position:fixed;bottom:8px;right:14px;
+  font-family:"IBM Plex Mono";font-size:9px;
+  color:var(--dimmer);letter-spacing:.08em;
+  z-index:5;
+}
+.kbhints b{color:var(--dim);font-weight:500;}
+
+/* utility */
+[hidden]{display:none !important;}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-<header>
-  <h1>📦 Parcel Tracker</h1>
-  <span class="subtitle">BERT inference on ESP32-S3 over USB serial</span>
-  <span id="status-pill" class="pill"><span class="dot"></span><span id="status-text">connecting…</span></span>
-</header>
+<div class="app">
 
-<div class="input-row">
-  <input id="cmd" type="text" placeholder='Type a natural-language command, e.g. "show me all orders"'
-         autocomplete="off" autofocus />
-  <button id="send">Send</button>
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <div class="brand-mark"></div>
+    <span class="brand-name">parcel-tracker</span>
+    <span class="brand-sub">· bert-tiny on esp32-s3</span>
+    <div class="grow"></div>
+    <span id="status-pill" class="pill" data-tour-target="status-pill">
+      <span class="dot"></span>
+      <span id="status-text">connecting…</span>
+    </span>
+    <button id="demo-btn" class="header-btn" data-tour-target="demo-btn">▶ DEMO</button>
+    <button id="stats-btn" class="header-btn" data-tour-target="stats-btn">📊 STATS</button>
+  </header>
+
+  <!-- ── MANIFEST STRIP ── -->
+  <section class="manifest" id="manifest">
+    <div class="manifest-cell lat" data-tour-target="manifest-lat">
+      <div class="label">latency · on-device</div>
+      <div id="m-lat" class="big">—<span class="unit">ms</span></div>
+      <div id="m-lat-sub" class="sub">awaiting query</div>
+    </div>
+    <div class="manifest-cell" data-tour-target="manifest-intent">
+      <div class="label">intent</div>
+      <div id="m-intent" class="big text">—</div>
+      <div id="m-intent-sub" class="sub">argmax · idle</div>
+    </div>
+    <div class="manifest-cell">
+      <div class="label">accuracy</div>
+      <div class="big text">91.78<span class="unit">%</span></div>
+      <div class="sub">67/73 held-out</div>
+    </div>
+    <div class="manifest-cell" data-tour-target="manifest-arena">
+      <div class="label">arena</div>
+      <div id="m-arena" class="big text">197<span class="unit">/256 KB</span></div>
+      <div class="sub">internal DRAM</div>
+    </div>
+    <div class="manifest-cell" id="m-override-cell" data-tour-target="manifest-override">
+      <div class="label">override</div>
+      <div id="m-override" class="big" style="color:var(--dim)">—</div>
+      <div id="m-override-sub" class="sub">idle</div>
+    </div>
+  </section>
+
+  <!-- ── INPUT + CHIPS ── -->
+  <section class="input-section" data-tour-target="input">
+    <div class="input-row">
+      <span class="input-prompt">&gt;</span>
+      <input id="cmd" class="input-box" type="text" autocomplete="off" autofocus
+             placeholder='type a natural-language command, e.g. "show me all orders"' />
+      <button id="send-btn" class="send-btn">SEND ⏎</button>
+    </div>
+    <div class="chips" data-tour-target="chips">
+      <span class="label">presets</span>
+      <span id="chip-row" style="display:contents"></span>
+    </div>
+  </section>
+
+  <!-- ── MAIN SPLIT ── -->
+  <main class="main-split">
+
+    <section class="panel-left">
+      <div class="row-baseline" data-tour-target="logits-panel">
+        <span class="label">logits across all 6 intents</span>
+        <div class="grow"></div>
+        <span class="stub mono" style="font-size:9.5px;letter-spacing:.04em">argmax shown · suppressed dimmed</span>
+      </div>
+      <div id="logits"><div class="empty-card">— logits appear here after a query —</div></div>
+
+      <div class="hr"></div>
+
+      <div class="row-baseline" data-tour-target="wire">
+        <span class="label">wire protocol · esp32 ↔ laptop</span>
+        <div class="grow"></div>
+      </div>
+      <div id="wire-protocol"><div class="empty-card">— no exchange yet —</div></div>
+    </section>
+
+    <section class="panel-right" data-tour-target="response-panel">
+      <div class="row-baseline">
+        <span class="label">response</span>
+        <div class="grow"></div>
+        <span id="response-meta" class="stub mono" style="font-size:9.5px;letter-spacing:.04em"></span>
+      </div>
+      <div id="response"><div class="empty-card">— send a query to begin —</div></div>
+    </section>
+
+  </main>
+
 </div>
 
-<div class="quick" id="quick-row">
-  <!-- populated from JS -->
-</div>
+<!-- ── DEMO DRAWER (left) ── -->
+<aside id="demo-drawer" class="drawer drawer-left" hidden>
+  <div class="drawer-hd">
+    <span class="label">▶ demo mode</span>
+    <button class="drawer-close" id="demo-close" title="close">×</button>
+  </div>
+  <div class="tour-progress"><i id="tour-progress-fill" style="width:0%"></i></div>
+  <div class="drawer-body">
+    <div class="tour-step-counter" id="tour-counter">step 1 of 8</div>
+    <h2 class="tour-title" id="tour-title">…</h2>
+    <p class="tour-narration" id="tour-narration">…</p>
+    <button class="tour-detail-toggle" id="tour-detail-toggle">▸ for your prep (toggle)</button>
+    <div class="tour-detail" id="tour-detail">…</div>
 
-<div id="result" class="result empty">
-  Type a command above to send it to the ESP32 for on-device classification.
-</div>
+    <div class="tour-input-block" id="tour-input-block" hidden>
+      <div class="label">query to fire</div>
+      <div class="tour-input-preview"><span class="stub">&gt; </span><span id="tour-input-text"></span></div>
+      <button class="tour-run-inline" id="tour-run">▶ run query on device</button>
+    </div>
 
-<div class="footer">
-  Latency includes 4.2 MB BERT-tiny model inference at <code>seq_len=64</code>
-  with custom hybrid FP32/INT8 FullyConnected kernel.
-</div>
+    <div id="tour-spotlight-tag" class="tour-spotlight-tag" hidden>
+      <span style="font-size:10px">◎</span>
+      <span>spotlighting <span id="tour-spotlight-name"></span></span>
+    </div>
+  </div>
+  <div class="tour-actions">
+    <button id="tour-back">← back</button>
+    <button id="tour-skip">skip</button>
+    <div class="grow"></div>
+    <button id="tour-next" class="primary">next →</button>
+  </div>
+</aside>
 
-</div>
+<!-- ── STATS DRAWER (right) ── -->
+<aside id="stats-drawer" class="drawer drawer-right" hidden>
+  <div class="drawer-hd">
+    <span class="label">📊 instrument stats</span>
+    <button class="drawer-close" id="stats-close" title="close">×</button>
+  </div>
+  <div class="drawer-body" id="stats-body"></div>
+</aside>
+
+<!-- spotlight wash -->
+<div id="spotlight-wash" class="spotlight-wash"></div>
+<div id="spotlight-arrow" class="spotlight-arrow"></div>
+
+<!-- keyboard hints (subtle) -->
+<div class="kbhints"><b>esc</b> close · <b>← →</b> tour nav · <b>⏎</b> send</div>
 
 <script>
+// ──────────────────────────────────────────────────────────────────────
+//   data: phrases, intent ordering, tour, stats
+// ──────────────────────────────────────────────────────────────────────
 const PHRASES = [
   "show me all orders",
   "view order 101",
   "filter by depot FadEx",
   "show history",
   "calculate the cost of order 101",
-  "view order 123",
+  "show upcoming orders",
 ];
 
-const cmd = document.getElementById("cmd");
-const sendBtn = document.getElementById("send");
-const quick = document.getElementById("quick-row");
-const out = document.getElementById("result");
-const statusPill = document.getElementById("status-pill");
-const statusText = document.getElementById("status-text");
+const INTENT_ORDER = [
+  "VIEW_ALL", "VIEW_ORDER", "FILTER_BY_DEPOT",
+  "SHOW_HISTORY", "CALCULATE_COST", "SEARCH_ORDER",
+];
 
+const TOUR = [
+  {
+    title: "On-device BERT, 510 ms",
+    narration: "BERT-tiny runs entirely on this $10 ESP32-S3. No cloud. No WiFi at runtime. Watch.",
+    detail: "4.4 M parameter transformer, 4.22 MB after dynamic-range INT8 quantization. The USB serial link to the laptop is only for the parcel-database query — the NLP stage is fully on-chip.",
+    input: null,
+    spotlight: "status-pill",
+    spotlightLabel: "ESP32 status pill",
+  },
+  {
+    title: "Live classification",
+    narration: "Sending a natural-language phrase. Watch the latency — every cycle is on-chip.",
+    detail: "510 ms covers ~25 M FP MACs across 109 TFLite Micro ops plus PSRAM activation reads. σ across n=30 runs is 0 ms — perfectly deterministic.",
+    input: "show me all orders",
+    spotlight: "manifest-lat",
+    spotlightLabel: "latency cell",
+  },
+  {
+    title: "Logits, not magic",
+    narration: "These bars are the six raw logits. Argmax wins. Margin = confidence.",
+    detail: "BERT pools the [CLS] token, applies a 128→6 linear classifier head, we read argmax. Trained phrases win by ≥1.5; OOD phrases compress to <0.3 — that's where the keyword guard kicks in.",
+    input: "view order 101",
+    spotlight: "logits-panel",
+    spotlightLabel: "logits panel",
+  },
+  {
+    title: "Custom kernels",
+    narration: "TFLite Micro doesn't ship two ops BERT-tiny needs. I wrote them.",
+    detail: "(a) GELU — not in stock TFLM, threw an `AddGelu op not found` link error. custom_gelu.cc uses the standard tanh approximation. (b) Hybrid FullyConnected — FP32 input × INT8 weights, the configuration dynamic-range quantization produces. Stock TFLM rejects it. custom_fc.cc dequantizes inline using per-channel scales.",
+    input: null,
+    spotlight: "stats-btn",
+    spotlightLabel: "stats button",
+    action: "open-stats",
+  },
+  {
+    title: "3.7 s → 510 ms",
+    narration: "Original latency was 3.7 seconds. Five config changes, no retrain — 86 % off.",
+    detail: "Build was -Og debug not -O2 (45 % gain). CPU was running at 160 MHz not its rated 240 MHz. D-cache was 32 KB / 32-byte lines, bumped to max 64 KB / 64-byte. Tensor arena moved from PSRAM to internal DRAM. Sequence length 64 → 32 since real queries are 5–10 tokens.",
+    input: "calculate the cost of order 101",
+    spotlight: "manifest-lat",
+    spotlightLabel: "latency cell",
+  },
+  {
+    title: "Active and history, one intent",
+    narration: "Order 123 was delivered last month. VIEW_ORDER searches both.",
+    detail: "Originally we had VIEW_ORDER (active-only) and SEARCH_ORDER (active+history) as separate intents. The model couldn't reliably distinguish them. Server-side they're now collapsed; SEARCH_ORDER stays as a model class but is suppressed at the firmware level. Cleaner UX.",
+    input: "view order 123",
+    spotlight: "response-panel",
+    spotlightLabel: "response panel",
+  },
+  {
+    title: "When BERT is wrong",
+    narration: "Watch — BERT picks the wrong intent here. A keyword rule corrects it.",
+    detail: "'upcoming' is out of distribution — the training set has zero examples with that word. BERT pattern-matches “show __ orders” to SHOW_HISTORY. The post-classify layer in the firmware sees the keyword 'upcoming' (high-precision in this domain) and overrides to VIEW_ALL. The amber badge documents the override transparently.",
+    input: "show upcoming orders",
+    spotlight: "manifest-override",
+    spotlightLabel: "override cell",
+    action: "expand-wire",
+  },
+  {
+    title: "510 ms · 91.78 % · $10",
+    narration: "On-chip. Deterministic. Privacy-preserving. Total hardware cost: ten dollars.",
+    detail: "Final KPIs: 510 ms p50 (σ=0 ms across n=30), 91.78 % held-out test accuracy preserved through quantization, 4.22 MB model + 197 KB arena fits with 60 % headroom, hybrid NLP guard catches OOD inputs.",
+    input: null,
+    spotlight: null,
+    action: "open-stats",
+  },
+];
+
+const STATS_DATA = [
+  { headline: "510",    unit: "ms · p50",   copy: "Median on-device latency (n=30). σ = 0 ms — perfectly deterministic real-time response.", live: "lat" },
+  { headline: "91.78",  unit: "%",          copy: "Held-out test accuracy (67/73). Identical to the PyTorch FP32 baseline — quantization preserved every correct answer." },
+  { headline: "4.22",   unit: "MB",         copy: "Dynamic-range INT8 model. Fits in 8 MB flash with 47 % headroom. Full FP32 was 16.5 MB; full INT8 broke accuracy (17.8 %)." },
+  { headline: "197",    unit: "/ 256 KB",   copy: "Tensor arena in internal DRAM, not PSRAM. ~10× faster activation reads. Empirical usage 77 % of the allocation.", live: "arena" },
+  { headline: "109",    unit: "ops",        copy: "Per inference. 14 FullyConnected, 4 BatchMatMul, 19 Add, 2 GELU. Two of these are custom kernels written for this project." },
+  { headline: "ESP32-S3", unit: "WROOM-1",  copy: "Dual-core Xtensa LX7 @ 240 MHz, 8 MB octal PSRAM, 8 MB flash. Bill-of-materials cost: ~$10." },
+  { headline: "0",      unit: "B leave home", copy: "All inference on-device. Laptop hosts the parcel database; no internet calls. Functional during outages." },
+  { headline: "32",     unit: "tokens",     copy: "Max sequence length (was 64). Real queries are 5–10 WordPiece tokens; halving cut attention's O(N²) cost in half again." },
+];
+
+// ──────────────────────────────────────────────────────────────────────
+//   state
+// ──────────────────────────────────────────────────────────────────────
+let tourIdx = 0;
+let tourActive = false;
+let session = { latencies: [], overrides: 0, total: 0 };
+let currentSpotEl = null;
+
+const $ = (s) => document.querySelector(s);
+
+// ──────────────────────────────────────────────────────────────────────
+//   chips
+// ──────────────────────────────────────────────────────────────────────
+const chipRow = $("#chip-row");
 PHRASES.forEach(p => {
   const b = document.createElement("button");
-  b.className = "ghost";
+  b.className = "chip";
+  b.type = "button";
   b.textContent = p;
-  b.onclick = () => { cmd.value = p; cmd.focus(); };
-  quick.appendChild(b);
+  b.onclick = () => { $("#cmd").value = p; $("#cmd").focus(); run(p); };
+  chipRow.appendChild(b);
 });
 
-cmd.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") run();
-});
-sendBtn.onclick = run;
+// ──────────────────────────────────────────────────────────────────────
+//   keyboard
+// ──────────────────────────────────────────────────────────────────────
+$("#cmd").addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+$("#send-btn").onclick = () => run();
 
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (tourActive) closeDemo();
+    if ($("#stats-drawer").classList.contains("open")) closeStats();
+  }
+  if (tourActive && document.activeElement !== $("#cmd")) {
+    if (e.key === "ArrowRight") tourNext();
+    if (e.key === "ArrowLeft") tourBack();
+  }
+});
+
+// ──────────────────────────────────────────────────────────────────────
+//   /api/status polling
+// ──────────────────────────────────────────────────────────────────────
 async function refreshStatus() {
   try {
     const r = await fetch("/api/status");
     const j = await r.json();
-    if (j.serial_disabled) {
-      statusPill.className = "pill error";
-      statusText.textContent = "serial disabled";
-    } else if (j.connected) {
-      statusPill.className = "pill online";
-      const used = j.arena_used >= 0 ? `${(j.arena_used / 1024).toFixed(0)} KB arena` : "ready";
-      statusText.textContent = `ESP32 online · ${used}`;
+    const pill = $("#status-pill");
+    const text = $("#status-text");
+    if (j.connected) {
+      pill.className = "pill online";
+      const arenaKB = j.arena_used >= 0 ? Math.round(j.arena_used / 1024) : null;
+      text.textContent = arenaKB ? `ESP32 online · ${arenaKB} KB` : "ESP32 online";
+      if (arenaKB && j.arena_total) {
+        const totalKB = Math.round(j.arena_total / 1024);
+        $("#m-arena").innerHTML = `${arenaKB}<span class="unit">/${totalKB} KB</span>`;
+      }
+    } else if (j.serial_disabled) {
+      pill.className = "pill error";
+      text.textContent = "serial disabled";
     } else if (j.last_error) {
-      statusPill.className = "pill error";
-      statusText.textContent = "ESP32 offline";
+      pill.className = "pill error";
+      text.textContent = "ESP32 offline";
     } else {
-      statusPill.className = "pill";
-      statusText.textContent = "not connected";
+      pill.className = "pill";
+      text.textContent = "connecting…";
     }
   } catch (e) {
-    statusPill.className = "pill error";
-    statusText.textContent = "server unreachable";
+    $("#status-pill").className = "pill error";
+    $("#status-text").textContent = "server unreachable";
   }
 }
 refreshStatus();
 setInterval(refreshStatus, 5000);
 
-async function run() {
-  const text = cmd.value.trim();
+// ──────────────────────────────────────────────────────────────────────
+//   stats drawer build
+// ──────────────────────────────────────────────────────────────────────
+function buildStats() {
+  const body = $("#stats-body");
+  body.innerHTML = STATS_DATA.map(s => `
+    <div class="stat-row">
+      ${s.live ? '<div class="stat-live-tag">● live</div>' : ''}
+      <div class="stat-headline">${escapeHtml(s.headline)}<span class="unit">${escapeHtml(s.unit)}</span></div>
+      <div class="stat-copy">${escapeHtml(s.copy)}</div>
+    </div>
+  `).join("") + `
+    <div class="stat-row">
+      <div class="stat-live-tag">● this session</div>
+      <div class="stat-headline" id="session-stats">— ms<span class="unit"> · 0 runs</span></div>
+      <div class="stat-copy" id="session-copy">no inferences yet — fire a query to populate.</div>
+    </div>
+  `;
+}
+buildStats();
+
+function refreshSessionStats() {
+  if (!session.latencies.length) return;
+  const sorted = [...session.latencies].sort((a,b)=>a-b);
+  const p50 = sorted[Math.floor(sorted.length/2)];
+  const p95 = sorted[Math.min(sorted.length-1, Math.floor(sorted.length*0.95))];
+  const n = session.latencies.length;
+  if ($("#session-stats")) {
+    $("#session-stats").innerHTML = `${p50}<span class="unit"> ms p50 · ${n} run${n===1?'':'s'}</span>`;
+  }
+  if ($("#session-copy")) {
+    $("#session-copy").textContent =
+      `p95 = ${p95} ms · ${session.overrides} keyword override${session.overrides===1?'':'s'} fired this session.`;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//   /api/run round-trip
+// ──────────────────────────────────────────────────────────────────────
+async function run(text) {
+  text = (text || $("#cmd").value).trim();
   if (!text) return;
-  sendBtn.disabled = true;
-  out.className = "result loading";
-  out.innerHTML = `<div>⌛ Running BERT inference on device…</div>
-                   <div style="color:var(--muted);font-size:12px;margin-top:8px">
-                     ~3.7s with current model</div>`;
+  $("#cmd").value = text;
+
+  // loading state
+  $("#send-btn").disabled = true;
+  $("#m-intent").textContent = "…";
+  $("#m-intent-sub").textContent = "computing";
+  $("#m-lat").innerHTML = `<span style="opacity:.5">—<span class="unit">ms</span></span>`;
+  $("#m-lat-sub").textContent = "running on chip";
+  $("#response").innerHTML = `
+    <div class="loading-state"><span class="pulse"></span> running bert inference on device…</div>`;
 
   try {
     const r = await fetch("/api/run", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({text}),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
     });
     const j = await r.json();
     if (!r.ok) {
@@ -243,145 +1010,312 @@ async function run() {
       return;
     }
     render(j);
-    refreshStatus();
+    session.total++;
+    if (j.latency_ms) session.latencies.push(j.latency_ms);
+    if (j.overridden_from) session.overrides++;
+    refreshSessionStats();
   } catch (e) {
-    renderError(e.message);
+    renderError(`${e.name}: ${e.message}`);
   } finally {
-    sendBtn.disabled = false;
+    $("#send-btn").disabled = false;
   }
 }
 
 function renderError(msg, hint) {
-  out.className = "result error";
-  out.innerHTML = `<div class="label">Error</div>
-                   <div style="font-weight:600">${escapeHtml(msg)}</div>
-                   ${hint ? `<div style="color:var(--muted);margin-top:6px">${escapeHtml(hint)}</div>` : ""}`;
+  $("#m-intent").textContent = "ERR";
+  $("#m-intent-sub").textContent = "see response";
+  $("#m-lat").innerHTML = `—<span class="unit">ms</span>`;
+  $("#m-lat-sub").textContent = "errored";
+  $("#response").innerHTML = `
+    <div class="error-card">
+      <div style="font-weight:600;margin-bottom:6px">${escapeHtml(msg)}</div>
+      ${hint ? `<div style="color:var(--dim);margin-top:4px">${escapeHtml(hint)}</div>` : ""}
+    </div>`;
 }
 
 function render(j) {
-  out.className = "result";
-  const intent = j.intent || "?";
-  const score = j.score != null ? j.score.toFixed(2) : "—";
-  const ms = j.latency_ms != null ? `${j.latency_ms} ms` : "—";
-
-  const overrideBadge = j.overridden_from
-    ? `<div style="color:var(--warn);font-size:11px;margin-top:4px">
-         keyword override · BERT picked ${escapeHtml(j.overridden_from)} (top-2 logits within margin)
-       </div>` : "";
-  let html = `
-    <div class="grid">
-      <div class="card">
-        <div class="label">Predicted intent</div>
-        <div class="big" style="color:var(--accent-2)">${escapeHtml(intent)}</div>
-        <div style="color:var(--muted);font-size:12px">logit=${score}</div>
-        ${overrideBadge}
-      </div>
-      <div class="card">
-        <div class="label">On-device latency</div>
-        <div class="big">${ms}</div>
-        <div style="color:var(--muted);font-size:12px">BERT-tiny · seq_len=64</div>
-      </div>
-    </div>
-
-    <div class="scores">
-      <div class="label">Logits across all 6 intents</div>
-      ${renderScores(j.scores, intent)}
-    </div>
-  `;
-
-  if (j.entities && Object.keys(j.entities).length) {
-    html += `<div class="card" style="margin-top:12px">
-               <div class="label">Extracted entities</div>
-               <div class="mono">${escapeHtml(JSON.stringify(j.entities))}</div>
-             </div>`;
+  // manifest cells
+  if (j.latency_ms != null) {
+    $("#m-lat").innerHTML = `${j.latency_ms}<span class="unit">ms</span>`;
+    $("#m-lat-sub").textContent = `σ=0 · seq_len=32 · n=${session.total + 1}`;
+  }
+  if (j.intent) {
+    $("#m-intent").textContent = j.intent;
+    if (j.score != null && j.scores) {
+      const sorted = Object.entries(j.scores).sort((a,b) => b[1] - a[1]);
+      const margin = sorted.length > 1 ? (sorted[0][1] - sorted[1][1]).toFixed(2) : "—";
+      $("#m-intent-sub").textContent = `logit ${j.score.toFixed(2)} · Δ +${margin}`;
+    } else {
+      $("#m-intent-sub").textContent = "argmax";
+    }
   }
 
-  html += `<div class="card" style="margin-top:12px">
-             <div class="label">
-               You typed
-               <span class="arrow">→</span> ESP32 emitted JSON
-               <span class="arrow">→</span> Server replied
-             </div>
-             <div style="margin:8px 0">${renderResponse(j.response)}</div>
-             <details>
-               <summary>Show raw payloads</summary>
-               <div style="margin-top:8px">
-                 <div class="label">Request from ESP32</div>
-                 <pre>${escapeHtml(prettyJson(j.request))}</pre>
-                 <div class="label" style="margin-top:8px">Server response</div>
-                 <pre>${escapeHtml(prettyJson(j.response))}</pre>
-               </div>
-             </details>
-           </div>`;
+  // override cell
+  if (j.overridden_from) {
+    $("#m-override-cell").classList.add("amber");
+    $("#m-override").textContent = j.overridden_from;
+    $("#m-override-sub").textContent = `→ ${j.intent} (rule fired)`;
+  } else {
+    $("#m-override-cell").classList.remove("amber");
+    $("#m-override").innerHTML = "—";
+    $("#m-override-sub").textContent = "idle";
+  }
 
-  out.innerHTML = html;
+  // logits, response, wire
+  renderLogits(j.scores, j.intent);
+  $("#response").innerHTML = renderResponse(j.response);
+  $("#response-meta").textContent = describeResponse(j.response);
+  renderWire(j);
 }
 
-function renderScores(scores, winner) {
-  if (!scores || !Object.keys(scores).length) return "<em style='color:var(--muted)'>no scores</em>";
-  const entries = Object.entries(scores);
-  const min = Math.min(...entries.map(([,v]) => v));
-  const max = Math.max(...entries.map(([,v]) => v));
+function renderLogits(scores, winner) {
+  if (!scores || !Object.keys(scores).length) {
+    $("#logits").innerHTML = `<div class="empty-card">— no scores —</div>`;
+    return;
+  }
+  // Walk in fixed order so the panel doesn't shuffle between requests.
+  const entries = INTENT_ORDER.map(k => [k, scores[k]]).filter(([_,v]) => v !== undefined);
+  const vals = entries.map(([_,v]) => v);
+  const min = Math.min(...vals), max = Math.max(...vals);
   const range = Math.max(0.1, max - min);
-  return entries.map(([k, v]) => {
+
+  $("#logits").innerHTML = entries.map(([k, v]) => {
     const pct = ((v - min) / range) * 100;
     const isWin = k === winner;
-    // SEARCH_ORDER is deactivated at the firmware level (its handler is now
-    // identical to VIEW_ORDER's). The model still emits a logit for it for
-    // transparency, but it's never the chosen intent.
-    const isDeactivated = k === "SEARCH_ORDER";
-    const classes = ["score-row"];
-    if (isWin) classes.push("winner");
-    if (isDeactivated) classes.push("deactivated");
-    const tag = isDeactivated ? ' <span style="color:var(--muted);font-size:10px">(deactivated)</span>' : '';
-    return `<div class="${classes.join(" ")}">
-              <div class="name">${escapeHtml(k)}${tag}</div>
-              <div class="bar"><div style="width:${pct.toFixed(1)}%"></div></div>
-              <div class="val">${v >= 0 ? "+" : ""}${v.toFixed(2)}</div>
-            </div>`;
+    const isDeact = k === "SEARCH_ORDER";
+    const cls = ["logit-row"];
+    if (isWin) cls.push("winner");
+    if (isDeact) cls.push("deactivated");
+    return `<div class="${cls.join(' ')}">
+      <span class="key">${escapeHtml(k)}${isDeact ? '<span class="deactivated-tag">· deactivated</span>' : ''}</span>
+      <div class="bar"><div class="fill" style="width:${pct.toFixed(1)}%"></div></div>
+      <span class="val">${v >= 0 ? "+" : ""}${v.toFixed(2)}</span>
+    </div>`;
   }).join("");
 }
 
+function renderWire(j) {
+  const txStr = j.request ? JSON.stringify(j.request) : "—";
+  // Tour step 7 expands the wire panel automatically.
+  const expandThis = tourActive && TOUR[tourIdx]?.action === "expand-wire";
+  $("#wire-protocol").innerHTML = `
+    <div class="wire-panel">
+      <div class="wire-summary">
+        TX <span class="arrow">→</span>${escapeHtml(txStr)}
+      </div>
+      <details class="wire-details" ${expandThis ? "open" : ""}>
+        <summary>full request / response · click to expand</summary>
+        <div>
+          <div class="label">tx · esp32 → laptop</div>
+          <pre>${escapeHtml(JSON.stringify(j.request || {}, null, 2))}</pre>
+          <div class="label" style="margin-top:6px">rx · laptop → esp32</div>
+          <pre>${escapeHtml(JSON.stringify(j.response || {}, null, 2))}</pre>
+        </div>
+      </details>
+    </div>`;
+}
+
+function describeResponse(r) {
+  if (!r || typeof r !== "object") return "";
+  if (r.error) return "errored";
+  if (Array.isArray(r.orders)) {
+    const n = r.count ?? r.orders.length;
+    return `${n} order${n===1?'':'s'}${r.depot?` · ${r.depot}`:''}`;
+  }
+  if (r.order) return r.source ? `1 order · src: ${r.source}` : "1 order";
+  if (r.intent === "CALCULATE_COST" && r.cost_gbp != null) return `cost computed`;
+  return "";
+}
+
 function renderResponse(resp) {
-  if (!resp || typeof resp !== "object") return "<em>no response</em>";
-  if (resp.error) return `<span style="color:var(--error)">⚠ ${escapeHtml(resp.error)}</span>`;
-  // Try a friendly rendering for common shapes.
+  if (!resp || typeof resp !== "object") return `<div class="empty-card">— no response —</div>`;
+  if (resp.error) return `<div class="error-card">${escapeHtml(resp.error)}</div>`;
+
   if (Array.isArray(resp.orders)) {
-    const head = `<div style="font-weight:600;margin-bottom:6px">${resp.count ?? resp.orders.length} order${resp.orders.length === 1 ? "" : "s"}${resp.depot ? ` at ${escapeHtml(resp.depot)}` : ""}</div>`;
-    return head + `<div class="orders">${resp.orders.map(orderCard).join("")}</div>`;
+    const head = `<div class="row-baseline" style="margin-bottom:4px">
+      <span class="label" style="color:var(--text)">${resp.count ?? resp.orders.length} order${(resp.count ?? resp.orders.length)===1?'':'s'}${resp.depot?` at ${escapeHtml(resp.depot)}`:''}</span>
+    </div>`;
+    return head + `<div class="panel-soft no-pad order-list">
+      ${resp.orders.map(orderCard).join("")}
+    </div>`;
   }
-  if (resp.order) return `<div class="orders">${orderCard(resp.order)}</div>`;
+
+  if (resp.order) {
+    const banner = resp.source === "history"
+      ? `<div class="history-banner">found in history</div>` : "";
+    return banner + `<div class="panel-soft no-pad order-list">${orderCard(resp.order)}</div>`;
+  }
+
   if (resp.intent === "CALCULATE_COST" && resp.cost_gbp != null) {
-    return `<div style="font-size:18px"><strong>£${resp.cost_gbp.toFixed(2)}</strong>
-            for ${resp.weight_kg} kg via ${escapeHtml(resp.courier_name || "?")}
-            ${resp.order_id ? `(order #${resp.order_id})` : ""}</div>`;
+    return `<div class="cost-callout">
+      <div class="price"><span class="currency">£</span>${resp.cost_gbp.toFixed(2)}</div>
+      <div class="breakdown">
+        ${resp.weight_kg} kg · ${escapeHtml(resp.courier_name || "?")}${resp.order_id ? " · order #"+resp.order_id : ""}
+      </div>
+    </div>`;
   }
-  return `<pre>${escapeHtml(prettyJson(resp))}</pre>`;
+
+  return `<pre>${escapeHtml(JSON.stringify(resp, null, 2))}</pre>`;
 }
 
 function orderCard(o) {
-  const status = o.computed_status || (o.status === 1 ? "delivered" : "active");
-  const time = o.time_remaining ? `${o.time_remaining} left` :
-               o.time_since ? o.time_since :
-               (o.delivery_time || "");
+  const time = o.time_remaining ? `${o.time_remaining} left`
+             : o.time_since ? o.time_since
+             : (o.delivery_time || "");
   return `<div class="order-card">
-    <div class="id">#${o.package_id}</div>
-    <div><div class="name">${escapeHtml(o.name || "")}</div>
-         <div class="meta" style="text-align:left">${escapeHtml(time)}</div></div>
-    <div class="courier">${escapeHtml(o.courier_name || ("courier " + (o.courier ?? "?")))}</div>
-    <div class="meta">${o.weight} kg · £${(o.cost ?? 0).toFixed(2)}</div>
+    <span class="id">#${o.package_id}</span>
+    <div class="name-block">
+      <div class="name">${escapeHtml(o.name || "")}</div>
+      <div class="meta">${escapeHtml(time)}</div>
+    </div>
+    <span class="courier">${escapeHtml(o.courier_name || ('crr ' + (o.courier ?? '?')))}</span>
+    <span class="num-meta">${o.weight ?? 0} kg · £${(o.cost ?? 0).toFixed(2)}</span>
   </div>`;
 }
 
-function prettyJson(x) {
-  try { return JSON.stringify(x, null, 2); }
-  catch { return String(x); }
-}
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;",
   }[c]));
 }
+
+// ──────────────────────────────────────────────────────────────────────
+//   drawers
+// ──────────────────────────────────────────────────────────────────────
+$("#demo-btn").onclick = () => openDemo();
+$("#stats-btn").onclick = () => toggleStats();
+$("#demo-close").onclick = () => closeDemo();
+$("#stats-close").onclick = () => closeStats();
+
+function openDemo() {
+  closeStats();
+  $("#demo-drawer").hidden = false;
+  // next tick so the transform animates
+  requestAnimationFrame(() => $("#demo-drawer").classList.add("open"));
+  $("#demo-btn").classList.add("active");
+  tourActive = true;
+  tourIdx = 0;
+  renderTourStep();
+}
+function closeDemo() {
+  tourActive = false;
+  $("#demo-drawer").classList.remove("open");
+  $("#demo-btn").classList.remove("active");
+  setTimeout(() => { $("#demo-drawer").hidden = true; }, 300);
+  clearSpotlight();
+}
+function toggleStats() {
+  const isOpen = $("#stats-drawer").classList.contains("open");
+  if (isOpen) closeStats();
+  else openStats();
+}
+function openStats() {
+  $("#stats-drawer").hidden = false;
+  requestAnimationFrame(() => $("#stats-drawer").classList.add("open"));
+  $("#stats-btn").classList.add("active");
+  refreshSessionStats();
+}
+function closeStats() {
+  $("#stats-drawer").classList.remove("open");
+  $("#stats-btn").classList.remove("active");
+  setTimeout(() => { $("#stats-drawer").hidden = true; }, 300);
+}
+
+// ──────────────────────────────────────────────────────────────────────
+//   tour
+// ──────────────────────────────────────────────────────────────────────
+function renderTourStep() {
+  const s = TOUR[tourIdx];
+  $("#tour-counter").textContent = `step ${tourIdx + 1} of ${TOUR.length}`;
+  $("#tour-progress-fill").style.width = `${((tourIdx + 1) / TOUR.length) * 100}%`;
+  $("#tour-title").textContent = s.title;
+  $("#tour-narration").textContent = s.narration;
+  $("#tour-detail").textContent = s.detail;
+  $("#tour-detail").classList.remove("open");
+  $("#tour-detail-toggle").textContent = "▸ for your prep (toggle)";
+
+  if (s.input) {
+    $("#tour-input-block").hidden = false;
+    $("#tour-input-text").textContent = s.input;
+  } else {
+    $("#tour-input-block").hidden = true;
+  }
+
+  if (s.spotlight) {
+    $("#tour-spotlight-tag").hidden = false;
+    $("#tour-spotlight-name").textContent = s.spotlightLabel || s.spotlight;
+    setSpotlight(s.spotlight);
+  } else {
+    $("#tour-spotlight-tag").hidden = true;
+    clearSpotlight();
+  }
+
+  $("#tour-back").disabled = (tourIdx === 0);
+  $("#tour-next").textContent = (tourIdx === TOUR.length - 1) ? "finish" : "next →";
+
+  // step-specific actions
+  if (s.action === "open-stats") openStats();
+  else if (s.action !== "expand-wire") closeStats();
+}
+
+function tourNext() {
+  if (tourIdx < TOUR.length - 1) { tourIdx++; renderTourStep(); }
+  else closeDemo();
+}
+function tourBack() {
+  if (tourIdx > 0) { tourIdx--; renderTourStep(); }
+}
+
+$("#tour-next").onclick = tourNext;
+$("#tour-back").onclick = tourBack;
+$("#tour-skip").onclick = closeDemo;
+$("#tour-run").onclick = () => {
+  const s = TOUR[tourIdx];
+  if (s.input) { $("#cmd").value = s.input; run(s.input); }
+};
+$("#tour-detail-toggle").onclick = () => {
+  const det = $("#tour-detail");
+  const tog = $("#tour-detail-toggle");
+  const isOpen = det.classList.toggle("open");
+  tog.textContent = isOpen ? "▾ hide prep notes" : "▸ for your prep (toggle)";
+};
+
+// ──────────────────────────────────────────────────────────────────────
+//   inverse spotlight (subtle wash + outline + arrow)
+// ──────────────────────────────────────────────────────────────────────
+function setSpotlight(targetKey) {
+  clearSpotlight();
+  const el = document.querySelector(`[data-tour-target="${targetKey}"]`);
+  if (!el) return;
+  currentSpotEl = el;
+  el.classList.add("spotlight-target");
+  $("#spotlight-wash").classList.add("on");
+  positionArrow(el);
+}
+function clearSpotlight() {
+  if (currentSpotEl) {
+    currentSpotEl.classList.remove("spotlight-target");
+    currentSpotEl = null;
+  }
+  $("#spotlight-wash").classList.remove("on");
+  $("#spotlight-arrow").style.display = "none";
+}
+function positionArrow(el) {
+  const r = el.getBoundingClientRect();
+  const arrow = $("#spotlight-arrow");
+  // Decide which side fits best — below if there's room, otherwise above.
+  const viewportH = window.innerHeight;
+  const below = r.bottom + 36 < viewportH;
+  arrow.textContent = below ? "↑ this" : "↓ this";
+  arrow.style.left = (r.left + r.width / 2 - 24) + "px";
+  arrow.style.top = below
+    ? (r.bottom + 8) + "px"
+    : (r.top - 24) + "px";
+  arrow.style.display = "block";
+}
+window.addEventListener("resize", () => {
+  if (currentSpotEl) positionArrow(currentSpotEl);
+});
 </script>
 </body>
 </html>
