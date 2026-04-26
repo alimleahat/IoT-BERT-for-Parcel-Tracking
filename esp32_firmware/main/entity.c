@@ -38,6 +38,64 @@ static int find_number(const char *text)
     return -1;
 }
 
+/* Stop-words ignored during product-name extraction. Anything domain-y
+ * (find / search / order / where) plus generic English glue.            */
+static const char *STOPWORDS[] = {
+    "find", "search", "look", "lookup", "show", "view", "display",
+    "fetch", "get", "give", "bring", "list", "tell", "info",
+    "for", "the", "a", "an", "my", "me", "with", "of", "in", "on",
+    "where", "is", "what", "how", "all", "every", "any", "some",
+    "id", "order", "orders", "package", "packages", "parcel", "parcels",
+    "please", "thanks", "this", "that", "these", "those", "to",
+    "from", "by", NULL
+};
+
+static int is_stopword_lc(const char *word)
+{
+    for (int i = 0; STOPWORDS[i]; i++) {
+        if (strcmp(word, STOPWORDS[i]) == 0) return 1;
+    }
+    return 0;
+}
+
+static int is_courier_name_lc(const char *word)
+{
+    for (int i = 0; i < NUM_COURIERS; i++) {
+        if (strcmp(word, COURIERS[i].name) == 0) return 1;
+    }
+    return 0;
+}
+
+/** Pull the first content token out of `text` to use as a product-name
+ *  query. Skips numbers, stopwords ("find","order","my","the",...), and
+ *  courier names. Returns 1 on success, 0 if no candidate found.        */
+static int find_product_name(const char *text, char *out, int out_len)
+{
+    out[0] = '\0';
+    char buf[256];
+    int n = (int)strlen(text);
+    if (n > (int)sizeof(buf) - 1) n = sizeof(buf) - 1;
+    for (int i = 0; i < n; i++) buf[i] = (char)tolower((unsigned char)text[i]);
+    buf[n] = '\0';
+
+    /* Tokenize on whitespace and common punctuation incl. apostrophe. */
+    const char *delims = " \t\r\n,.!?;:'\"()[]{}";
+    char *tok = strtok(buf, delims);
+    while (tok) {
+        int tlen = (int)strlen(tok);
+        int all_digits = 1;
+        for (int i = 0; i < tlen; i++) if (!isdigit((unsigned char)tok[i])) { all_digits = 0; break; }
+        if (tlen >= 3 && !all_digits && !is_stopword_lc(tok) && !is_courier_name_lc(tok)) {
+            int copy = tlen < out_len - 1 ? tlen : out_len - 1;
+            memcpy(out, tok, copy);
+            out[copy] = '\0';
+            return 1;
+        }
+        tok = strtok(NULL, delims);
+    }
+    return 0;
+}
+
 /** Find a weight pattern like "3kg", "2.5 kg", "4 kilos". Returns -1.0 if not found. */
 static float find_weight(const char *text)
 {
@@ -111,15 +169,21 @@ static int find_courier(const char *text, char *name_out)
 
 void entity_extract(const char *text, const char *intent, entities_t *out)
 {
-    out->order_id     = -1;
-    out->depot_id     = -1;
-    out->depot_name[0] = '\0';
-    out->weight       = -1.0f;
-    out->courier_id   = -1;
+    out->order_id        = -1;
+    out->depot_id        = -1;
+    out->depot_name[0]   = '\0';
+    out->weight          = -1.0f;
+    out->courier_id      = -1;
     out->courier_name[0] = '\0';
+    out->product_name[0] = '\0';
 
     if (strcmp(intent, "VIEW_ORDER") == 0 || strcmp(intent, "SEARCH_ORDER") == 0) {
         out->order_id = find_number(text);
+        /* If no order ID found, try to pull a product name token. The
+         * server's handle_view_order accepts either order_id OR name. */
+        if (out->order_id < 0) {
+            find_product_name(text, out->product_name, sizeof(out->product_name));
+        }
     }
     else if (strcmp(intent, "FILTER_BY_DEPOT") == 0) {
         out->depot_id = find_courier(text, out->depot_name);

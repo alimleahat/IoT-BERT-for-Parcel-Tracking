@@ -11,6 +11,7 @@ typedef struct {
     float weight;           /* -1.0 if not found */
     int  courier_id;        /* -1 if not found */
     char courier_name[32];  /* empty string if not found */
+    char product_name[48];  /* empty string if not found — used for name-search VIEW_ORDER */
 } entities_t;
 
 /**

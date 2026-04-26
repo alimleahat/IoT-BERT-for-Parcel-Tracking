@@ -48,6 +48,14 @@
  * the two are functionally identical anyway, and removing SEARCH_ORDER
  * from the user-visible output makes the demo flow cleaner.            */
 
+/* True if `text` contains any digit. Used to gate the name-search rule:
+ * "find airpods" should route to name-search, but "find order 101" still
+ * goes through the order_id path because there's a number. */
+static int has_digit(const char *text) {
+    for (const char *p = text; *p; p++) if (isdigit((unsigned char)*p)) return 1;
+    return 0;
+}
+
 /* Lowercase-aware substring search (input is small so brute force is fine). */
 static int contains_ci(const char *hay, const char *needle) {
     size_t hlen = strlen(hay), nlen = strlen(needle);
@@ -119,6 +127,18 @@ static int post_classify(const char *text, int intent_idx, const float *scores,
           || contains_ci(text, "how much")) {
         rule_pick = IDX_CALCULATE_COST;
     }
+    /* Name-search rule: a "find / search / look up / where's" verb plus
+     * NO number → route to VIEW_ORDER. The entity extractor will pull a
+     * candidate product-name token; the server does the substring match
+     * across active+history. Catches OOD phrases like "find airpods"
+     * without any retraining. Last in the chain so the more specific
+     * rules above (delivered, upcoming, cost, depot) win when relevant. */
+    else if (!has_digit(text)
+          && (contains_ci(text, "find ")    || contains_ci(text, "search ")
+           || contains_ci(text, "look ")    || contains_ci(text, "lookup ")
+           || contains_ci(text, "where ")   || contains_ci(text, "where's"))) {
+        rule_pick = IDX_VIEW_ORDER;
+    }
 
     if (rule_pick >= 0 && rule_pick != intent_idx) {
         if (*original_intent < 0) *original_intent = intent_idx;
@@ -150,14 +170,35 @@ static void build_json(const char *intent, const entities_t *ent, char *buf, int
         snprintf(buf, buf_size, "{\"intent\":\"VIEW_ALL\"}");
     }
     else if (strcmp(intent, "VIEW_ORDER") == 0) {
-        snprintf(buf, buf_size,
-                 "{\"intent\":\"VIEW_ORDER\",\"params\":{\"order_id\":%d}}",
-                 ent->order_id);
+        if (ent->order_id >= 0) {
+            snprintf(buf, buf_size,
+                     "{\"intent\":\"VIEW_ORDER\",\"params\":{\"order_id\":%d}}",
+                     ent->order_id);
+        } else if (ent->product_name[0] != '\0') {
+            /* Name-search path: VIEW_ORDER + name → server substring match */
+            snprintf(buf, buf_size,
+                     "{\"intent\":\"VIEW_ORDER\",\"params\":{\"name\":\"%s\"}}",
+                     ent->product_name);
+        } else {
+            /* No usable entity — let the server return a graceful error */
+            snprintf(buf, buf_size, "{\"intent\":\"VIEW_ORDER\",\"params\":{}}");
+        }
     }
     else if (strcmp(intent, "SEARCH_ORDER") == 0) {
-        snprintf(buf, buf_size,
-                 "{\"intent\":\"SEARCH_ORDER\",\"params\":{\"order_id\":%d}}",
-                 ent->order_id);
+        /* Same shape as VIEW_ORDER (the firmware should never reach here
+         * because SEARCH_ORDER is suppressed in post_classify, but kept
+         * for robustness). */
+        if (ent->order_id >= 0) {
+            snprintf(buf, buf_size,
+                     "{\"intent\":\"SEARCH_ORDER\",\"params\":{\"order_id\":%d}}",
+                     ent->order_id);
+        } else if (ent->product_name[0] != '\0') {
+            snprintf(buf, buf_size,
+                     "{\"intent\":\"SEARCH_ORDER\",\"params\":{\"name\":\"%s\"}}",
+                     ent->product_name);
+        } else {
+            snprintf(buf, buf_size, "{\"intent\":\"SEARCH_ORDER\",\"params\":{}}");
+        }
     }
     else if (strcmp(intent, "FILTER_BY_DEPOT") == 0) {
         if (ent->depot_name[0] != '\0') {

@@ -61,16 +61,23 @@ def handle_view_all(params):
 # ── VIEW_ORDER ───────────────────────────────────────────────────────────────
 
 def handle_view_order(params):
-    """Look up an order by ID across active orders AND history.
+    """Look up an order across active orders AND history.
 
-    Mirrors the C searchOrder() function (both halves). SEARCH_ORDER is
-    aliased to this same handler — they're semantically the same operation
-    and the model's distinction between them is brittle, so we collapse
-    them on the server side and present a single response shape.
+    Two ways to look up:
+      - {"order_id": N}        → exact ID match (mirrors C searchOrder())
+      - {"name":     "string"} → case-insensitive substring match on the
+                                 product name (e.g. "airpods" → AirPodsPro)
+    Name search returns a list response (it can return multiple matches
+    or zero); ID search returns a single-order response.
+    SEARCH_ORDER is aliased to this same handler.
     """
+    name = params.get("name")
+    if name:
+        return _name_search(str(name))
+
     order_id = params.get("order_id")
     if order_id is None:
-        return {"intent": "VIEW_ORDER", "error": "Missing order_id parameter"}
+        return {"intent": "VIEW_ORDER", "error": "Missing order_id or name parameter"}
 
     order_id = int(order_id)
     depots = load_depots()
@@ -99,6 +106,50 @@ def handle_view_order(params):
         "intent": "VIEW_ORDER",
         "found": False,
         "message": f"No order with ID {order_id} in active orders or history",
+    }
+
+
+def _name_search(name):
+    """Case-insensitive substring search across active+history by product name.
+    Returns a list-shaped response so the UI's existing order-list renderer
+    can display multiple matches.
+    """
+    needle = name.strip().lower()
+    if not needle:
+        return {"intent": "VIEW_ORDER", "error": "Empty name"}
+
+    depots = load_depots()
+    matches = []
+
+    for order in load_orders():
+        if needle in order["name"].lower():
+            matches.append({
+                **_enrich_active_order(order, depots),
+                "_source": "active",
+            })
+    for order in load_history():
+        if needle in order["name"].lower():
+            matches.append({
+                **_enrich_history_order(order, depots),
+                "_source": "history",
+            })
+
+    if not matches:
+        return {
+            "intent": "VIEW_ORDER",
+            "query": name,
+            "count": 0,
+            "orders": [],
+            "found": False,
+            "message": f"No orders matching '{name}'",
+        }
+
+    return {
+        "intent": "VIEW_ORDER",
+        "query": name,
+        "count": len(matches),
+        "orders": matches,
+        "found": True,
     }
 
 

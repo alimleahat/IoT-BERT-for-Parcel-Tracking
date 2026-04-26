@@ -1171,6 +1171,7 @@ function describeResponse(r) {
   if (r.error) return "errored";
   if (Array.isArray(r.orders)) {
     const n = r.count ?? r.orders.length;
+    if (r.query) return `${n} match${n===1?'':'es'} for '${r.query}'`;
     return `${n} order${n===1?'':'s'}${r.depot?` · ${r.depot}`:''}`;
   }
   if (r.order) return r.source ? `1 order · src: ${r.source}` : "1 order";
@@ -1183,8 +1184,20 @@ function renderResponse(resp) {
   if (resp.error) return `<div class="error-card">${escapeHtml(resp.error)}</div>`;
 
   if (Array.isArray(resp.orders)) {
+    const n = resp.count ?? resp.orders.length;
+    let title;
+    if (resp.query) {
+      title = n === 0
+        ? `no orders match '${escapeHtml(resp.query)}'`
+        : `${n} match${n===1?'':'es'} for '${escapeHtml(resp.query)}'`;
+    } else {
+      title = `${n} order${n===1?'':'s'}${resp.depot?` at ${escapeHtml(resp.depot)}`:''}`;
+    }
+    if (n === 0) {
+      return `<div class="empty-card">— ${title} —</div>`;
+    }
     const head = `<div class="row-baseline" style="margin-bottom:4px">
-      <span class="label" style="color:var(--text)">${resp.count ?? resp.orders.length} order${(resp.count ?? resp.orders.length)===1?'':'s'}${resp.depot?` at ${escapeHtml(resp.depot)}`:''}</span>
+      <span class="label" style="color:var(--text)">${title}</span>
     </div>`;
     return head + `<div class="panel-soft no-pad order-list">
       ${resp.orders.map(orderCard).join("")}
@@ -1213,10 +1226,14 @@ function orderCard(o) {
   const time = o.time_remaining ? `${o.time_remaining} left`
              : o.time_since ? o.time_since
              : (o.delivery_time || "");
+  // Name-search results carry _source per item so we can tag active vs history.
+  const srcTag = o._source
+    ? `<span class="meta" style="color:${o._source==='active'?'var(--accent)':'var(--amber)'};margin-right:6px">${o._source}</span>`
+    : '';
   return `<div class="order-card">
     <span class="id">#${o.package_id}</span>
     <div class="name-block">
-      <div class="name">${escapeHtml(o.name || "")}</div>
+      <div class="name">${srcTag}${escapeHtml(o.name || "")}</div>
       <div class="meta">${escapeHtml(time)}</div>
     </div>
     <span class="courier">${escapeHtml(o.courier_name || ('crr ' + (o.courier ?? '?')))}</span>
