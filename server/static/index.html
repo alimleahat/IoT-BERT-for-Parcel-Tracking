@@ -499,50 +499,33 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
   background:var(--accent);
   transition:width .3s cubic-bezier(.2,.7,.2,1);
 }
-.tour-step-counter{
+/* card-style tour content (game-card lockup) */
+.tc-chapter-title{
   font-family:"IBM Plex Mono";
-  font-size:10px;
+  font-size:11px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
   color:var(--dim);
-  letter-spacing:.1em;
-  margin-bottom:10px;
+  margin-bottom:6px;
 }
-.tour-title{
-  font-size:17px;
+.tc-headline{
+  font-family:"IBM Plex Sans";
+  font-size:48px;
   font-weight:600;
-  line-height:1.25;
+  letter-spacing:-0.025em;
+  color:var(--accent);
+  line-height:1;
   margin:0 0 12px;
-  letter-spacing:-0.012em;
+  font-variant-numeric:tabular-nums;
 }
-.tour-narration{
+.tc-headline.compact{font-size:30px;}
+.tc-subtext{
   color:var(--text);
-  margin:0 0 18px;
-  font-size:14px;
-  line-height:1.55;
+  font-size:13.5px;
+  line-height:1.5;
+  margin-bottom:8px;
 }
-.tour-detail-toggle{
-  background:transparent;
-  border:0;
-  color:var(--dim);
-  font-family:"IBM Plex Mono";
-  font-size:10px;
-  cursor:pointer;
-  padding:0;
-  letter-spacing:.06em;
-  text-align:left;
-}
-.tour-detail-toggle:hover{color:var(--accent);}
-.tour-detail{
-  border:1px solid var(--line-soft);
-  background:var(--surface);
-  padding:12px 14px;
-  margin:8px 0 0;
-  font-size:12px;
-  line-height:1.55;
-  color:var(--dim);
-  display:none;
-}
-.tour-detail.open{display:block;}
-.tour-input-block{margin-top:18px;display:flex;flex-direction:column;gap:8px;}
+.tour-input-block{margin-top:14px;display:flex;flex-direction:column;gap:6px;}
 .tour-input-preview{
   font-family:"IBM Plex Mono";
   font-size:11px;
@@ -581,7 +564,7 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 .tour-actions button:disabled{opacity:.35;cursor:not-allowed;}
 .tour-actions .grow{margin-left:auto;}
 
-/* run-button-inside-drawer-body */
+/* legacy class retained for any leftover refs */
 .tour-run-inline{
   border:1px solid var(--accent);
   background:transparent;
@@ -597,6 +580,101 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 }
 .tour-run-inline:hover:not(:disabled){background:var(--accent);color:var(--bg);}
 .tour-run-inline:disabled{opacity:.35;cursor:wait;}
+
+/* ── chapter intro overlay (1.2 s flash on chapter change) ── */
+.chapter-intro{
+  position:fixed; inset:0;
+  background:rgba(8,10,16,.94);
+  z-index:70;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:18px;
+  pointer-events:none;
+  opacity:0;
+}
+.chapter-intro.show{ animation: chapterFlash 1.4s cubic-bezier(.2,.7,.2,1) forwards; }
+@keyframes chapterFlash{
+  0%   { opacity:0; transform:scale(1.04); }
+  12%  { opacity:1; transform:scale(1); }
+  78%  { opacity:1; }
+  100% { opacity:0; transform:scale(1); }
+}
+.ci-num{
+  font-family:"IBM Plex Mono";
+  font-size:13px;
+  letter-spacing:.4em;
+  color:var(--accent);
+  text-transform:uppercase;
+}
+.ci-title{
+  font-family:"IBM Plex Sans";
+  font-size:64px;
+  font-weight:600;
+  letter-spacing:-0.025em;
+  color:var(--text);
+  text-transform:lowercase;
+}
+
+/* ── achievement toasts ── */
+.toast-stack{
+  position:fixed;
+  top:80px; right:24px;
+  z-index:60;
+  display:flex; flex-direction:column; gap:8px;
+  pointer-events:none;
+}
+.toast{
+  background:var(--bg);
+  border:1px solid var(--accent);
+  color:var(--accent);
+  padding:10px 14px;
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  box-shadow:
+    0 0 0 1px var(--accent-bg),
+    0 8px 24px rgba(0,0,0,.42);
+  animation: toastSlide 2.8s ease-out forwards;
+  white-space:nowrap;
+}
+@keyframes toastSlide{
+  0%   { opacity:0; transform:translateX(20px); }
+  8%   { opacity:1; transform:translateX(0); }
+  85%  { opacity:1; }
+  100% { opacity:0; transform:translateX(20px); }
+}
+
+/* ── demo HUD (visible only during tour) ── */
+.demo-hud{
+  position:fixed;
+  bottom:30px; right:24px;
+  background:var(--bg);
+  border:1px solid var(--line);
+  padding:10px 14px;
+  font-family:"IBM Plex Mono";
+  font-size:10px;
+  z-index:40;
+  letter-spacing:.04em;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  pointer-events:none;
+}
+.demo-hud .hud-row{
+  display:flex; gap:14px; justify-content:space-between;
+  min-width:170px;
+}
+.demo-hud .hud-label{
+  color:var(--dim);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  font-size:9px;
+}
+.demo-hud b{
+  color:var(--accent);
+  font-weight:500;
+  font-variant-numeric:tabular-nums;
+}
 
 /* stats drawer */
 .stat-row{
@@ -778,33 +856,46 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 
 </div>
 
-<!-- ── DEMO CALLOUT (floats near spotlighted element) ── -->
+<!-- ── DEMO CARD (floats near spotlighted element) ── -->
 <div id="tour-callout" class="tour-callout" hidden data-pos="below">
   <div class="tc-arrow" aria-hidden="true"></div>
   <div class="tc-progress"><i id="tour-progress-fill" style="width:0%"></i></div>
   <div class="tc-head">
-    <span class="label">▶ demo mode</span>
-    <span class="tc-counter" id="tour-counter">step 1 of 8</span>
+    <span class="tc-counter" id="tour-counter">CH 01 / 08</span>
+    <span class="grow"></span>
     <button class="drawer-close" id="demo-close" title="exit tour">×</button>
   </div>
   <div class="tc-body">
-    <h2 class="tour-title" id="tour-title">…</h2>
-    <p class="tour-narration" id="tour-narration">…</p>
-    <button class="tour-detail-toggle" id="tour-detail-toggle">▸ for your prep (toggle)</button>
-    <div class="tour-detail" id="tour-detail">…</div>
-
+    <div class="tc-chapter-title" id="tour-title">…</div>
+    <div class="tc-headline" id="tour-headline">…</div>
+    <div class="tc-subtext" id="tour-subtext">…</div>
     <div class="tour-input-block" id="tour-input-block" hidden>
-      <div class="label">query to fire</div>
       <div class="tour-input-preview"><span class="stub">&gt; </span><span id="tour-input-text"></span></div>
-      <button class="tour-run-inline" id="tour-run">▶ run query on device</button>
     </div>
   </div>
   <div class="tour-actions">
-    <button id="tour-back">← back</button>
+    <button id="tour-back" title="previous chapter (←)">←</button>
     <button id="tour-skip">skip</button>
+    <button id="tour-run" class="primary" hidden>▶ fire query</button>
     <div class="grow"></div>
-    <button id="tour-next" class="primary">next →</button>
+    <button id="tour-next" class="primary" title="next chapter (→)">next →</button>
   </div>
+</div>
+
+<!-- ── chapter intro flash overlay ── -->
+<div id="chapter-intro" class="chapter-intro" hidden>
+  <div class="ci-num" id="ci-num">CH 01 / 08</div>
+  <div class="ci-title" id="ci-title">…</div>
+</div>
+
+<!-- ── achievement toast container ── -->
+<div id="toast-stack" class="toast-stack"></div>
+
+<!-- ── demo HUD (live counters during tour) ── -->
+<div id="demo-hud" class="demo-hud" hidden>
+  <div class="hud-row"><span class="hud-label">queries</span><b id="hud-queries">0</b></div>
+  <div class="hud-row"><span class="hud-label">overrides</span><b id="hud-overrides">0</b></div>
+  <div class="hud-row"><span class="hud-label">p50 latency</span><b id="hud-p50">—</b></div>
 </div>
 
 <!-- ── STATS DRAWER (right) ── -->
@@ -843,70 +934,67 @@ const INTENT_ORDER = [
 
 const TOUR = [
   {
-    title: "On-device BERT, 510 ms",
-    narration: "BERT-tiny runs entirely on this $10 ESP32-S3. No cloud. No WiFi at runtime. Watch.",
-    detail: "4.4 M parameter transformer, 4.22 MB after dynamic-range INT8 quantization. The USB serial link to the laptop is only for the parcel-database query — the NLP stage is fully on-chip.",
+    chapter: "on the desk",
+    headline: "$10",
+    subtext: "the entire compute. tiny silicon, big model.",
     input: null,
     spotlight: "status-pill",
-    spotlightLabel: "ESP32 status pill",
   },
   {
-    title: "Live classification",
-    narration: "Sending a natural-language phrase. Watch the latency — every cycle is on-chip.",
-    detail: "510 ms covers ~25 M FP MACs across 109 TFLite Micro ops plus PSRAM activation reads. σ across n=30 runs is 0 ms — perfectly deterministic.",
+    chapter: "live inference",
+    headline: "510 ms",
+    subtext: "BERT classifies on-chip. no cloud, no GPU.",
     input: "show me all orders",
     spotlight: "manifest-lat",
-    spotlightLabel: "latency cell",
+    achievement: "✓ first on-device inference",
   },
   {
-    title: "Logits, not magic",
-    narration: "These bars are the six raw logits. Argmax wins. Margin = confidence.",
-    detail: "BERT pools the [CLS] token, applies a 128→6 linear classifier head, we read argmax. Trained phrases win by ≥1.5; OOD phrases compress to <0.3 — that's where the keyword guard kicks in.",
+    chapter: "how it thinks",
+    headline: "6 logits",
+    subtext: "argmax wins. margin = confidence.",
     input: "view order 101",
     spotlight: "logits-panel",
-    spotlightLabel: "logits panel",
   },
   {
-    title: "Custom kernels",
-    narration: "TFLite Micro doesn't ship two ops BERT-tiny needs. I wrote them.",
-    detail: "(a) GELU — not in stock TFLM, threw an `AddGelu op not found` link error. custom_gelu.cc uses the standard tanh approximation. (b) Hybrid FullyConnected — FP32 input × INT8 weights, the configuration dynamic-range quantization produces. Stock TFLM rejects it. custom_fc.cc dequantizes inline using per-channel scales.",
+    chapter: "what i had to write",
+    headline: "2 kernels",
+    subtext: "custom GELU + hybrid FC. tflite micro doesn't ship them.",
     input: null,
     spotlight: "stats-btn",
-    spotlightLabel: "stats button",
     action: "open-stats",
   },
   {
-    title: "3.7 s → 510 ms",
-    narration: "Original latency was 3.7 seconds. Five config changes, no retrain — 86 % off.",
-    detail: "Build was -Og debug not -O2 (45 % gain). CPU was running at 160 MHz not its rated 240 MHz. D-cache was 32 KB / 32-byte lines, bumped to max 64 KB / 64-byte. Tensor arena moved from PSRAM to internal DRAM. Sequence length 64 → 32 since real queries are 5–10 tokens.",
+    chapter: "the speedup",
+    headline: "86 % off",
+    subtext: "3.7 s → 510 ms. five flags, no retrain.",
     input: "calculate the cost of order 101",
     spotlight: "manifest-lat",
-    spotlightLabel: "latency cell",
   },
   {
-    title: "Active and history, one intent",
-    narration: "Order 123 was delivered last month. VIEW_ORDER searches both.",
-    detail: "Originally we had VIEW_ORDER (active-only) and SEARCH_ORDER (active+history) as separate intents. The model couldn't reliably distinguish them. Server-side they're now collapsed; SEARCH_ORDER stays as a model class but is suppressed at the firmware level. Cleaner UX.",
-    input: "view order 123",
-    spotlight: "response-panel",
-    spotlightLabel: "response panel",
-  },
-  {
-    title: "When BERT is wrong",
-    narration: "Watch — BERT picks the wrong intent here. A keyword rule corrects it.",
-    detail: "'upcoming' is out of distribution — the training set has zero examples with that word. BERT pattern-matches “show __ orders” to SHOW_HISTORY. The post-classify layer in the firmware sees the keyword 'upcoming' (high-precision in this domain) and overrides to VIEW_ALL. The amber badge documents the override transparently.",
+    chapter: "when bert is wrong",
+    headline: "hybrid guard",
+    subtext: "BERT for fuzzy. rules for high-precision keywords.",
     input: "show upcoming orders",
     spotlight: "manifest-override",
-    spotlightLabel: "override cell",
     action: "expand-wire",
+    achievement: "✓ hybrid guard fired",
   },
   {
-    title: "510 ms · 91.78 % · $10",
-    narration: "On-chip. Deterministic. Privacy-preserving. Total hardware cost: ten dollars.",
-    detail: "Final KPIs: 510 ms p50 (σ=0 ms across n=30), 91.78 % held-out test accuracy preserved through quantization, 4.22 MB model + 197 KB arena fits with 60 % headroom, hybrid NLP guard catches OOD inputs.",
+    chapter: "beyond the dataset",
+    headline: "0 retrains",
+    subtext: 'product-name search added without touching the model.',
+    input: "find airpods",
+    spotlight: "response-panel",
+    achievement: "✓ name search used",
+  },
+  {
+    chapter: "victory lap",
+    headline: "510 · 91.78 · $10",
+    subtext: "ms · % accuracy · hardware cost.",
     input: null,
     spotlight: null,
     action: "open-stats",
+    achievement: "✓ tour complete",
   },
 ];
 
@@ -1033,6 +1121,24 @@ function refreshSessionStats() {
 }
 
 // ──────────────────────────────────────────────────────────────────────
+//   number ticker (for latency cell theatrics)
+// ──────────────────────────────────────────────────────────────────────
+function tickerLatency(target) {
+  const el = $("#m-lat");
+  const duration = 600;
+  const start = performance.now();
+  const from = 0;
+  const step = (now) => {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+    const v = Math.round(from + (target - from) * eased);
+    el.innerHTML = `${v}<span class="unit">ms</span>`;
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+// ──────────────────────────────────────────────────────────────────────
 //   /api/run round-trip
 // ──────────────────────────────────────────────────────────────────────
 async function run(text) {
@@ -1065,6 +1171,7 @@ async function run(text) {
     if (j.latency_ms) session.latencies.push(j.latency_ms);
     if (j.overridden_from) session.overrides++;
     refreshSessionStats();
+    if (tourActive) refreshHud();
   } catch (e) {
     renderError(`${e.name}: ${e.message}`);
   } finally {
@@ -1087,7 +1194,7 @@ function renderError(msg, hint) {
 function render(j) {
   // manifest cells
   if (j.latency_ms != null) {
-    $("#m-lat").innerHTML = `${j.latency_ms}<span class="unit">ms</span>`;
+    tickerLatency(j.latency_ms);
     $("#m-lat-sub").textContent = `σ=0 · seq_len=32 · n=${session.total + 1}`;
   }
   if (j.intent) {
@@ -1258,14 +1365,18 @@ $("#stats-close").onclick = () => closeStats();
 function openDemo() {
   closeStats();
   $("#tour-callout").hidden = false;
+  $("#demo-hud").hidden = false;
+  refreshHud();
   $("#demo-btn").classList.add("active");
   tourActive = true;
   tourIdx = 0;
-  renderTourStep();
+  renderTourStep(undefined);  // undefined => fires chapter-1 intro
 }
 function closeDemo() {
   tourActive = false;
   $("#tour-callout").hidden = true;
+  $("#demo-hud").hidden = true;
+  $("#chapter-intro").hidden = true;
   $("#demo-btn").classList.remove("active");
   clearSpotlight();
 }
@@ -1291,50 +1402,102 @@ function closeStats() {
 // ──────────────────────────────────────────────────────────────────────
 //   tour
 // ──────────────────────────────────────────────────────────────────────
-function renderTourStep() {
+function renderTourStep(prevIdx) {
   const s = TOUR[tourIdx];
-  $("#tour-counter").textContent = `step ${tourIdx + 1} of ${TOUR.length}`;
+
+  // Chapter intro flash on first load OR on chapter change.
+  if (prevIdx !== tourIdx) flashChapterIntro(tourIdx);
+
+  // Card content
+  const num = String(tourIdx + 1).padStart(2, "0");
+  const total = String(TOUR.length).padStart(2, "0");
+  $("#tour-counter").textContent = `CH ${num} / ${total}`;
   $("#tour-progress-fill").style.width = `${((tourIdx + 1) / TOUR.length) * 100}%`;
-  $("#tour-title").textContent = s.title;
-  $("#tour-narration").textContent = s.narration;
-  $("#tour-detail").textContent = s.detail;
-  $("#tour-detail").classList.remove("open");
-  $("#tour-detail-toggle").textContent = "▸ for your prep (toggle)";
+  $("#tour-title").textContent = s.chapter;
+
+  const headline = $("#tour-headline");
+  headline.textContent = s.headline;
+  // Compact mode for very long headlines (e.g. the closing "510 · 91.78 · $10").
+  headline.classList.toggle("compact", s.headline.length > 14);
+
+  $("#tour-subtext").textContent = s.subtext;
 
   if (s.input) {
     $("#tour-input-block").hidden = false;
     $("#tour-input-text").textContent = s.input;
+    $("#tour-run").hidden = false;
   } else {
     $("#tour-input-block").hidden = true;
+    $("#tour-run").hidden = true;
   }
 
-  if (s.spotlight) {
-    setSpotlight(s.spotlight);
-  } else {
-    clearSpotlight();
-  }
+  if (s.spotlight) setSpotlight(s.spotlight); else clearSpotlight();
 
   $("#tour-back").disabled = (tourIdx === 0);
-  $("#tour-next").textContent = (tourIdx === TOUR.length - 1) ? "finish" : "next →";
+  $("#tour-next").textContent = (tourIdx === TOUR.length - 1) ? "finish ✓" : "next →";
 
   // step-specific actions
   if (s.action === "open-stats") openStats();
   else if (s.action !== "expand-wire") closeStats();
 
-  // Position the callout near the spotlighted element. Wait two frames
-  // so the spotlight class has applied AND the callout has its rendered
-  // size before we read offsetWidth/Height.
+  // Position after the spotlight class applies AND the card has its size.
   requestAnimationFrame(() =>
     requestAnimationFrame(() => positionCallout(s.spotlight ? document.querySelector(`[data-tour-target="${s.spotlight}"]`) : null))
   );
+
+  // Fire achievement toast for this step's milestone (debounced — only
+  // when forward-progressing past a step that has one).
+  if (s.achievement && (prevIdx === undefined || tourIdx > prevIdx)) {
+    showToast(s.achievement);
+  }
+}
+
+// ── chapter intro flash ───────────────────────────────────────────
+function flashChapterIntro(idx) {
+  const s = TOUR[idx];
+  const num = String(idx + 1).padStart(2, "0");
+  const total = String(TOUR.length).padStart(2, "0");
+  const overlay = $("#chapter-intro");
+  $("#ci-num").textContent = `CH ${num} / ${total}`;
+  $("#ci-title").textContent = s.chapter;
+  overlay.hidden = false;
+  overlay.classList.remove("show");
+  // restart animation
+  void overlay.offsetWidth;
+  overlay.classList.add("show");
+  // hide after the animation ends so it doesn't catch click events
+  setTimeout(() => { overlay.hidden = true; }, 1450);
+}
+
+// ── toast stack ───────────────────────────────────────────────────
+function showToast(text) {
+  const stack = $("#toast-stack");
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = text;
+  stack.appendChild(t);
+  setTimeout(() => t.remove(), 2900);
+}
+
+// ── HUD ───────────────────────────────────────────────────────────
+function refreshHud() {
+  $("#hud-queries").textContent = session.total;
+  $("#hud-overrides").textContent = session.overrides;
+  if (session.latencies.length) {
+    const sorted = [...session.latencies].sort((a,b)=>a-b);
+    const p50 = sorted[Math.floor(sorted.length/2)];
+    $("#hud-p50").textContent = `${p50} ms`;
+  }
 }
 
 function tourNext() {
-  if (tourIdx < TOUR.length - 1) { tourIdx++; renderTourStep(); }
+  const prev = tourIdx;
+  if (tourIdx < TOUR.length - 1) { tourIdx++; renderTourStep(prev); }
   else closeDemo();
 }
 function tourBack() {
-  if (tourIdx > 0) { tourIdx--; renderTourStep(); }
+  const prev = tourIdx;
+  if (tourIdx > 0) { tourIdx--; renderTourStep(prev); }
 }
 
 $("#tour-next").onclick = tourNext;
@@ -1343,12 +1506,6 @@ $("#tour-skip").onclick = closeDemo;
 $("#tour-run").onclick = () => {
   const s = TOUR[tourIdx];
   if (s.input) { $("#cmd").value = s.input; run(s.input); }
-};
-$("#tour-detail-toggle").onclick = () => {
-  const det = $("#tour-detail");
-  const tog = $("#tour-detail-toggle");
-  const isOpen = det.classList.toggle("open");
-  tog.textContent = isOpen ? "▾ hide prep notes" : "▸ for your prep (toggle)";
 };
 
 // ──────────────────────────────────────────────────────────────────────
