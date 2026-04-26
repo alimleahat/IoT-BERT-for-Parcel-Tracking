@@ -421,7 +421,75 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 .drawer-close:hover{border-color:var(--accent);color:var(--accent);}
 .drawer-body{flex:1;overflow-y:auto;padding:18px 20px;}
 
-/* tour-specific */
+/* tour callout — floating panel that anchors to the spotlight target */
+.tour-callout{
+  position:fixed;
+  width:380px;
+  max-width:calc(100vw - 32px);
+  background:var(--bg);
+  border:1px solid var(--accent);
+  z-index:50;
+  display:flex;
+  flex-direction:column;
+  box-shadow:
+    0 14px 44px rgba(0,0,0,.55),
+    0 0 0 1px var(--accent-bg);
+  transition:opacity .18s ease, transform .22s cubic-bezier(.2,.7,.2,1);
+}
+.tour-callout[hidden]{display:none;}
+.tc-progress{
+  display:flex;
+  height:2px;
+  background:var(--line-soft);
+}
+.tc-progress > i{
+  background:var(--accent);
+  transition:width .3s cubic-bezier(.2,.7,.2,1);
+}
+.tc-head{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 14px;
+  border-bottom:1px solid var(--line-soft);
+}
+.tc-head .label{margin:0;color:var(--accent);}
+.tc-counter{
+  font-family:"IBM Plex Mono";font-size:9px;
+  color:var(--dim);letter-spacing:.1em;text-transform:uppercase;
+  margin-left:auto;
+}
+.tc-body{
+  padding:14px 18px 6px;
+  display:flex;flex-direction:column;
+}
+
+/* arrow that points TOWARD the spotlighted element */
+.tc-arrow{
+  position:absolute;
+  width:14px;height:14px;
+  background:var(--bg);
+  border:1px solid var(--accent);
+  transform:rotate(45deg);
+  z-index:-1;
+}
+.tour-callout[data-pos="below"] .tc-arrow{
+  top:-8px;left:50%;margin-left:-7px;
+  border-right:none;border-bottom:none;
+}
+.tour-callout[data-pos="above"] .tc-arrow{
+  bottom:-8px;left:50%;margin-left:-7px;
+  border-left:none;border-top:none;
+}
+.tour-callout[data-pos="right"] .tc-arrow{
+  left:-8px;top:50%;margin-top:-7px;
+  border-right:none;border-top:none;
+}
+.tour-callout[data-pos="left"] .tc-arrow{
+  right:-8px;top:50%;margin-top:-7px;
+  border-left:none;border-bottom:none;
+}
+.tour-callout[data-pos="none"] .tc-arrow{display:none;}
+
+/* legacy class kept so unrelated CSS rules continue to work */
 .tour-progress{
   display:flex;
   height:2px;
@@ -439,11 +507,11 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
   margin-bottom:10px;
 }
 .tour-title{
-  font-size:20px;
+  font-size:17px;
   font-weight:600;
-  line-height:1.2;
-  margin:0 0 14px;
-  letter-spacing:-0.015em;
+  line-height:1.25;
+  margin:0 0 12px;
+  letter-spacing:-0.012em;
 }
 .tour-narration{
   color:var(--text);
@@ -485,23 +553,10 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
   word-break:break-word;
 }
 .tour-input-preview .stub{color:var(--dim);}
-.tour-spotlight-tag{
-  display:inline-flex;align-items:center;gap:6px;
-  font-family:"IBM Plex Mono";
-  font-size:9px;
-  color:var(--accent);
-  letter-spacing:.1em;
-  text-transform:uppercase;
-  padding:4px 8px;
-  border:1px solid var(--accent);
-  background:var(--accent-bg);
-  margin-top:14px;
-  align-self:flex-start;
-}
 .tour-actions{
   display:flex;
   gap:8px;
-  padding:14px 20px;
+  padding:10px 14px;
   border-top:1px solid var(--line-soft);
   background:var(--surface);
 }
@@ -723,15 +778,16 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 
 </div>
 
-<!-- ── DEMO DRAWER (left) ── -->
-<aside id="demo-drawer" class="drawer drawer-left" hidden>
-  <div class="drawer-hd">
+<!-- ── DEMO CALLOUT (floats near spotlighted element) ── -->
+<div id="tour-callout" class="tour-callout" hidden data-pos="below">
+  <div class="tc-arrow" aria-hidden="true"></div>
+  <div class="tc-progress"><i id="tour-progress-fill" style="width:0%"></i></div>
+  <div class="tc-head">
     <span class="label">▶ demo mode</span>
-    <button class="drawer-close" id="demo-close" title="close">×</button>
+    <span class="tc-counter" id="tour-counter">step 1 of 8</span>
+    <button class="drawer-close" id="demo-close" title="exit tour">×</button>
   </div>
-  <div class="tour-progress"><i id="tour-progress-fill" style="width:0%"></i></div>
-  <div class="drawer-body">
-    <div class="tour-step-counter" id="tour-counter">step 1 of 8</div>
+  <div class="tc-body">
     <h2 class="tour-title" id="tour-title">…</h2>
     <p class="tour-narration" id="tour-narration">…</p>
     <button class="tour-detail-toggle" id="tour-detail-toggle">▸ for your prep (toggle)</button>
@@ -742,11 +798,6 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
       <div class="tour-input-preview"><span class="stub">&gt; </span><span id="tour-input-text"></span></div>
       <button class="tour-run-inline" id="tour-run">▶ run query on device</button>
     </div>
-
-    <div id="tour-spotlight-tag" class="tour-spotlight-tag" hidden>
-      <span style="font-size:10px">◎</span>
-      <span>spotlighting <span id="tour-spotlight-name"></span></span>
-    </div>
   </div>
   <div class="tour-actions">
     <button id="tour-back">← back</button>
@@ -754,7 +805,7 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
     <div class="grow"></div>
     <button id="tour-next" class="primary">next →</button>
   </div>
-</aside>
+</div>
 
 <!-- ── STATS DRAWER (right) ── -->
 <aside id="stats-drawer" class="drawer drawer-right" hidden>
@@ -1189,9 +1240,7 @@ $("#stats-close").onclick = () => closeStats();
 
 function openDemo() {
   closeStats();
-  $("#demo-drawer").hidden = false;
-  // next tick so the transform animates
-  requestAnimationFrame(() => $("#demo-drawer").classList.add("open"));
+  $("#tour-callout").hidden = false;
   $("#demo-btn").classList.add("active");
   tourActive = true;
   tourIdx = 0;
@@ -1199,9 +1248,8 @@ function openDemo() {
 }
 function closeDemo() {
   tourActive = false;
-  $("#demo-drawer").classList.remove("open");
+  $("#tour-callout").hidden = true;
   $("#demo-btn").classList.remove("active");
-  setTimeout(() => { $("#demo-drawer").hidden = true; }, 300);
   clearSpotlight();
 }
 function toggleStats() {
@@ -1214,11 +1262,13 @@ function openStats() {
   requestAnimationFrame(() => $("#stats-drawer").classList.add("open"));
   $("#stats-btn").classList.add("active");
   refreshSessionStats();
+  // Drawer takes 380px on the right; tour callout may need to shift.
+  setTimeout(repositionTour, 320);
 }
 function closeStats() {
   $("#stats-drawer").classList.remove("open");
   $("#stats-btn").classList.remove("active");
-  setTimeout(() => { $("#stats-drawer").hidden = true; }, 300);
+  setTimeout(() => { $("#stats-drawer").hidden = true; repositionTour(); }, 300);
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -1242,11 +1292,8 @@ function renderTourStep() {
   }
 
   if (s.spotlight) {
-    $("#tour-spotlight-tag").hidden = false;
-    $("#tour-spotlight-name").textContent = s.spotlightLabel || s.spotlight;
     setSpotlight(s.spotlight);
   } else {
-    $("#tour-spotlight-tag").hidden = true;
     clearSpotlight();
   }
 
@@ -1256,6 +1303,13 @@ function renderTourStep() {
   // step-specific actions
   if (s.action === "open-stats") openStats();
   else if (s.action !== "expand-wire") closeStats();
+
+  // Position the callout near the spotlighted element. Wait two frames
+  // so the spotlight class has applied AND the callout has its rendered
+  // size before we read offsetWidth/Height.
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => positionCallout(s.spotlight ? document.querySelector(`[data-tour-target="${s.spotlight}"]`) : null))
+  );
 }
 
 function tourNext() {
@@ -1290,7 +1344,9 @@ function setSpotlight(targetKey) {
   currentSpotEl = el;
   el.classList.add("spotlight-target");
   $("#spotlight-wash").classList.add("on");
-  positionArrow(el);
+  // The (now-unused) standalone arrow stays hidden; the callout has
+  // its own arrow pointing toward the target.
+  $("#spotlight-arrow").style.display = "none";
 }
 function clearSpotlight() {
   if (currentSpotEl) {
@@ -1300,22 +1356,79 @@ function clearSpotlight() {
   $("#spotlight-wash").classList.remove("on");
   $("#spotlight-arrow").style.display = "none";
 }
-function positionArrow(el) {
-  const r = el.getBoundingClientRect();
-  const arrow = $("#spotlight-arrow");
-  // Decide which side fits best — below if there's room, otherwise above.
-  const viewportH = window.innerHeight;
-  const below = r.bottom + 36 < viewportH;
-  arrow.textContent = below ? "↑ this" : "↓ this";
-  arrow.style.left = (r.left + r.width / 2 - 24) + "px";
-  arrow.style.top = below
-    ? (r.bottom + 8) + "px"
-    : (r.top - 24) + "px";
-  arrow.style.display = "block";
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function positionCallout(target) {
+  const callout = $("#tour-callout");
+  if (callout.hidden) return;
+
+  const cw = callout.offsetWidth || 380;
+  const ch = callout.offsetHeight || 280;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const m = 14;
+
+  // Reserve the right strip if the stats drawer is open (380 px wide).
+  const statsOpen = $("#stats-drawer").classList.contains("open");
+  const rightLimit = vw - (statsOpen ? 380 : 0) - m;
+  const leftLimit = m;
+
+  // No spotlight target: dock at the bottom-left so it doesn't cover
+  // the manifest or the response panel.
+  if (!target) {
+    callout.dataset.pos = "none";
+    callout.style.left = leftLimit + "px";
+    callout.style.top = (vh - ch - m) + "px";
+    return;
+  }
+
+  const r = target.getBoundingClientRect();
+  const horizCenter = clamp(r.left + r.width / 2 - cw / 2, leftLimit, rightLimit - cw);
+  const vertCenter  = clamp(r.top  + r.height / 2 - ch / 2, m, vh - ch - m);
+
+  let pos;
+  if (r.bottom + m + ch <= vh - m) {
+    pos = { left: horizCenter, top: r.bottom + m,           side: "below" };
+  } else if (r.top - m - ch >= m) {
+    pos = { left: horizCenter, top: r.top - m - ch,         side: "above" };
+  } else if (r.right + m + cw <= rightLimit) {
+    pos = { left: r.right + m,         top: vertCenter,     side: "right" };
+  } else {
+    pos = { left: Math.max(leftLimit, r.left - m - cw), top: vertCenter, side: "left" };
+  }
+
+  callout.dataset.pos = pos.side;
+  callout.style.left = pos.left + "px";
+  callout.style.top  = pos.top  + "px";
+
+  // Center the arrow over the target if we're above/below; over the row
+  // center if we're left/right. The arrow's position is set as a CSS var
+  // so it follows the cursor of the target rather than just the callout.
+  const arrow = callout.querySelector(".tc-arrow");
+  if (pos.side === "below" || pos.side === "above") {
+    const targetCx = r.left + r.width / 2;
+    const arrowX = clamp(targetCx - pos.left, 14, cw - 14);
+    arrow.style.left = arrowX + "px";
+    arrow.style.marginLeft = "-7px";
+    arrow.style.top = "";
+    arrow.style.marginTop = "";
+  } else {
+    const targetCy = r.top + r.height / 2;
+    const arrowY = clamp(targetCy - pos.top, 14, ch - 14);
+    arrow.style.top = arrowY + "px";
+    arrow.style.marginTop = "-7px";
+    arrow.style.left = "";
+    arrow.style.marginLeft = "";
+  }
 }
-window.addEventListener("resize", () => {
-  if (currentSpotEl) positionArrow(currentSpotEl);
-});
+
+function repositionTour() {
+  if (!tourActive) return;
+  const s = TOUR[tourIdx];
+  positionCallout(s.spotlight ? document.querySelector(`[data-tour-target="${s.spotlight}"]`) : null);
+}
+window.addEventListener("resize", repositionTour);
+window.addEventListener("scroll", repositionTour, true);
 </script>
 </body>
 </html>
