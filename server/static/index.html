@@ -120,8 +120,8 @@ body{
   margin-top:8px;
   font-variant-numeric:tabular-nums;
 }
-.manifest-cell.lat .big{font-size:54px;}
-.manifest-cell:not(.lat) .big{font-size:22px;}
+.manifest-cell.lat .big{font-size:76px;}
+.manifest-cell:not(.lat) .big{font-size:32px;}
 .manifest-cell .big .unit{
   color:var(--dim);
   font-weight:400;
@@ -129,7 +129,7 @@ body{
   font-size:0.4em;
   letter-spacing:0;
 }
-.manifest-cell.lat .big .unit{font-size:18px;}
+.manifest-cell.lat .big .unit{font-size:24px;}
 .manifest-cell .big.text{color:var(--text);}
 .manifest-cell .sub{font-size:10px;color:var(--dimmer);margin-top:6px;font-family:"IBM Plex Mono";letter-spacing:.04em;}
 .manifest-cell.amber{background:var(--amber-bg);}
@@ -424,7 +424,7 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 /* tour callout — floating panel that anchors to the spotlight target */
 .tour-callout{
   position:fixed;
-  width:380px;
+  width:420px;
   max-width:calc(100vw - 32px);
   background:var(--bg);
   border:1px solid var(--accent);
@@ -460,6 +460,8 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 .tc-body{
   padding:14px 18px 6px;
   display:flex;flex-direction:column;
+  max-height:calc(100vh - 220px);
+  overflow-y:auto;
 }
 
 /* arrow that points TOWARD the spotlighted element */
@@ -510,15 +512,15 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 }
 .tc-headline{
   font-family:"IBM Plex Sans";
-  font-size:48px;
+  font-size:64px;
   font-weight:600;
-  letter-spacing:-0.025em;
+  letter-spacing:-0.03em;
   color:var(--accent);
   line-height:1;
-  margin:0 0 12px;
+  margin:0 0 14px;
   font-variant-numeric:tabular-nums;
 }
-.tc-headline.compact{font-size:30px;}
+.tc-headline.compact{font-size:36px;}
 .tc-subtext{
   color:var(--text);
   font-size:13.5px;
@@ -581,6 +583,198 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 .tour-run-inline:hover:not(:disabled){background:var(--accent);color:var(--bg);}
 .tour-run-inline:disabled{opacity:.35;cursor:wait;}
 
+/* ── story takeover panels (Inspiration + Architecture chapters) ── *
+ * These replace .main-split when active. Same grid cell.            */
+.story-panel{
+  grid-row: 4;             /* slots into the same row as .main-split */
+  border-top: 1px solid var(--line-soft);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 32px;
+  gap:28px;
+  min-height:0;
+  overflow:auto;
+  text-align:center;
+}
+.story-panel[hidden]{display:none;}
+.sp-eyebrow{
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  letter-spacing:.4em;
+  color:var(--accent);
+  text-transform:uppercase;
+}
+.sp-stack{
+  display:flex; flex-direction:column; gap:14px;
+  font-family:"IBM Plex Sans";
+}
+.sp-line{
+  font-size:30px;
+  font-weight:500;
+  letter-spacing:-0.015em;
+  color:var(--text);
+  line-height:1.3;
+}
+.sp-line em{
+  color:var(--accent);
+  font-style:normal;
+  font-weight:600;
+}
+.sp-divider{
+  width:120px;
+  height:1px;
+  background:var(--line);
+}
+.sp-conclusion{
+  font-family:"IBM Plex Sans";
+  font-size:34px;
+  font-weight:500;
+  color:var(--dim);
+  letter-spacing:-0.015em;
+  line-height:1.3;
+}
+.sp-emphasis{
+  color:var(--accent);
+  font-weight:700;
+  letter-spacing:-0.02em;
+}
+
+/* architecture-flow — 3 stacked boxes with arrows between */
+.arch-flow{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  width:100%;
+  max-width:560px;
+}
+.arch-box{
+  border:1px solid var(--line);
+  padding:18px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  text-align:left;
+}
+.arch-box.accent{
+  border-color:var(--accent);
+  background:var(--accent-bg);
+}
+.arch-tier{
+  font-family:"IBM Plex Mono";
+  font-size:9px;
+  letter-spacing:.18em;
+  color:var(--dim);
+  text-transform:uppercase;
+}
+.arch-name{
+  font-family:"IBM Plex Sans";
+  font-size:26px;
+  font-weight:600;
+  color:var(--text);
+  letter-spacing:-0.015em;
+  margin-top:2px;
+}
+.arch-box.accent .arch-name{color:var(--accent);}
+.arch-role{
+  font-family:"IBM Plex Mono";
+  font-size:13px;
+  color:var(--dim);
+  letter-spacing:.02em;
+  margin-top:4px;
+}
+.arch-meta{
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  color:var(--dimmer);
+  letter-spacing:.04em;
+  margin-top:4px;
+}
+.arch-arrow{
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  letter-spacing:.16em;
+  color:var(--dim);
+  text-transform:uppercase;
+  text-align:center;
+}
+.arch-conclusion{
+  font-size:22px;
+}
+
+/* build-flow — vertical numbered timeline */
+.build-flow{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  width:100%;
+  max-width:680px;
+}
+.build-step{
+  display:flex;
+  gap:18px;
+  align-items:center;
+  border:1px solid var(--line-soft);
+  padding:14px 18px;
+  text-align:left;
+}
+.build-step.accent{
+  border-color:var(--accent);
+  background:var(--accent-bg);
+}
+.build-num{
+  font-family:"IBM Plex Sans";
+  font-size:32px;
+  font-weight:600;
+  color:var(--accent);
+  letter-spacing:-0.02em;
+  line-height:1;
+  width:36px;
+  flex:none;
+  font-variant-numeric:tabular-nums;
+}
+.build-body{display:flex; flex-direction:column; gap:2px; min-width:0;}
+.build-title{
+  font-family:"IBM Plex Sans";
+  font-size:17px;
+  font-weight:600;
+  color:var(--text);
+  letter-spacing:-0.01em;
+}
+.build-desc{
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  color:var(--dim);
+  letter-spacing:.03em;
+}
+
+/* tour-card bullets */
+.tc-bullets{
+  list-style:none;
+  padding:0;
+  margin:6px 0 0;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.tc-bullets li{
+  font-family:"IBM Plex Mono";
+  font-size:11px;
+  line-height:1.5;
+  color:var(--dim);
+  padding-left:14px;
+  position:relative;
+  letter-spacing:.02em;
+}
+.tc-bullets li::before{
+  content:"▸";
+  color:var(--accent);
+  position:absolute;
+  left:0;
+  font-family:"IBM Plex Mono";
+}
+
 /* ── chapter intro overlay (1.2 s flash on chapter change) ── */
 .chapter-intro{
   position:fixed; inset:0;
@@ -607,11 +801,12 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 }
 .ci-title{
   font-family:"IBM Plex Sans";
-  font-size:64px;
+  font-size:88px;
   font-weight:600;
-  letter-spacing:-0.025em;
+  letter-spacing:-0.03em;
   color:var(--text);
   text-transform:lowercase;
+  text-align:center;
 }
 
 /* ── achievement toasts ── */
@@ -854,6 +1049,99 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
 
   </main>
 
+  <!-- ── Inspiration takeover panel (shown only during chapter 1) ── -->
+  <aside id="inspiration-panel" class="story-panel" hidden>
+    <div class="sp-eyebrow">the inspiration</div>
+    <div class="sp-stack">
+      <div class="sp-line">cloud AI sends your data <em>away</em>.</div>
+      <div class="sp-line">voice assistants log every query.</div>
+      <div class="sp-line">parcel data is <em>personal</em>.</div>
+    </div>
+    <div class="sp-divider"></div>
+    <div class="sp-conclusion">
+      so I put the model
+      <span class="sp-emphasis">on the chip.</span>
+    </div>
+  </aside>
+
+  <!-- ── Architecture takeover panel (shown only during chapter 2) ── -->
+  <aside id="architecture-panel" class="story-panel arch" hidden>
+    <div class="sp-eyebrow">the architecture · 3 tiers</div>
+    <div class="arch-flow">
+      <div class="arch-box">
+        <div class="arch-tier">tier 1 · user</div>
+        <div class="arch-name">YOU</div>
+        <div class="arch-role">type natural language</div>
+      </div>
+      <div class="arch-arrow">↓ &nbsp; USB serial &nbsp; ↓</div>
+      <div class="arch-box accent">
+        <div class="arch-tier">tier 2 · edge</div>
+        <div class="arch-name">ESP32-S3</div>
+        <div class="arch-role">tokenize → BERT → JSON</div>
+        <div class="arch-meta">8 MB PSRAM · 240 MHz · on-chip inference</div>
+      </div>
+      <div class="arch-arrow">↓ &nbsp; TX / RX &nbsp; ↓</div>
+      <div class="arch-box">
+        <div class="arch-tier">tier 3 · local server</div>
+        <div class="arch-name">LAPTOP</div>
+        <div class="arch-role">parcel database → response</div>
+      </div>
+    </div>
+    <div class="sp-divider"></div>
+    <div class="sp-conclusion arch-conclusion">
+      no WiFi · no cloud · <span class="sp-emphasis">0 bytes leave home</span>
+    </div>
+  </aside>
+
+  <!-- ── Build takeover panel (shown only during chapter 3) ── -->
+  <aside id="build-panel" class="story-panel build" hidden>
+    <div class="sp-eyebrow">the build pipeline</div>
+    <div class="build-flow">
+      <div class="build-step">
+        <div class="build-num">1</div>
+        <div class="build-body">
+          <div class="build-title">starting point</div>
+          <div class="build-desc">C parcel tracker (CW1) — flat-file database, menu interface</div>
+        </div>
+      </div>
+      <div class="build-step">
+        <div class="build-num">2</div>
+        <div class="build-body">
+          <div class="build-title">python mirror</div>
+          <div class="build-desc">Flask handlers — same .txt files, same logic, HTTP-friendly</div>
+        </div>
+      </div>
+      <div class="build-step">
+        <div class="build-num">3</div>
+        <div class="build-body">
+          <div class="build-title">training data</div>
+          <div class="build-desc">~60 hand-typed phrases per intent · 361 total · 80/20 split</div>
+        </div>
+      </div>
+      <div class="build-step">
+        <div class="build-num">4</div>
+        <div class="build-body">
+          <div class="build-title">fine-tune</div>
+          <div class="build-desc">bert-tiny + 128→6 head · 50 epochs on MPS · 91.78%</div>
+        </div>
+      </div>
+      <div class="build-step">
+        <div class="build-num">5</div>
+        <div class="build-body">
+          <div class="build-title">quantize</div>
+          <div class="build-desc">PyTorch FP32 17 MB → TFLite dynamic-range INT8 4.22 MB</div>
+        </div>
+      </div>
+      <div class="build-step accent">
+        <div class="build-num">6</div>
+        <div class="build-body">
+          <div class="build-title">custom kernels + flash</div>
+          <div class="build-desc">two custom math ops in C++ · ESP-IDF build · 5.7 MB binary onto the chip</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
 </div>
 
 <!-- ── DEMO CARD (floats near spotlighted element) ── -->
@@ -869,6 +1157,7 @@ details.wire-details > div{margin-top:8px;display:flex;flex-direction:column;gap
     <div class="tc-chapter-title" id="tour-title">…</div>
     <div class="tc-headline" id="tour-headline">…</div>
     <div class="tc-subtext" id="tour-subtext">…</div>
+    <ul class="tc-bullets" id="tour-bullets" hidden></ul>
     <div class="tour-input-block" id="tour-input-block" hidden>
       <div class="tour-input-preview"><span class="stub">&gt; </span><span id="tour-input-text"></span></div>
     </div>
@@ -934,63 +1223,130 @@ const INTENT_ORDER = [
 
 const TOUR = [
   {
-    chapter: "on the desk",
-    headline: "$10",
-    subtext: "the entire compute. tiny silicon, big model.",
+    chapter: "motivation",
+    headline: "privacy",
+    subtext: "voice assistants log every query. parcel data is personal. why send it anywhere?",
+    bullets: [
+      "Cloud AI sends user data to third parties",
+      "Parcel info reveals address, contents, schedule",
+      "Goal: keep the NLP entirely on a small chip at home",
+    ],
     input: null,
-    spotlight: "status-pill",
+    spotlight: null,
+    panel: "inspiration",
   },
   {
-    chapter: "live inference",
+    chapter: "architecture",
+    headline: "user → chip → laptop",
+    subtext: "three tiers. no internet during inference.",
+    bullets: [
+      "Tier 1: user types natural language",
+      "Tier 2: ESP32-S3 runs BERT, emits JSON over USB",
+      "Tier 3: laptop hosts the parcel database, returns response",
+      "USB serial only — no WiFi, no cloud",
+    ],
+    input: null,
+    spotlight: null,
+    panel: "architecture",
+  },
+  {
+    chapter: "the build",
+    headline: "from C to BERT",
+    subtext: "six stages: legacy code → dataset → train → quantize → kernels → flash.",
+    bullets: [
+      "Started from C parcel tracker (CW1) — flat-file database, menu interface",
+      "Ported handlers to Python (Flask) — reads same .txt files as the C code",
+      "Hand-wrote ~60 example phrases per intent (361 total), split 80/20 → 288 train + 73 test",
+      "Fine-tuned bert-tiny in PyTorch on Apple MPS — 50 epochs, AdamW lr=3e-5",
+      "Converted to TFLite with dynamic-range INT8 — 4.22 MB, 91.78% accuracy",
+      "Wrote 2 custom math operations in C++ that the framework didn't ship",
+    ],
+    input: null,
+    spotlight: null,
+    panel: "build",
+  },
+  {
+    chapter: "first query · interface tour",
     headline: "510 ms",
-    subtext: "BERT classifies on-chip. no cloud, no GPU.",
+    subtext: "fire a query, then walk through what the interface shows.",
+    bullets: [
+      "MANIFEST (top): latency · intent · accuracy · arena · override",
+      "STATUS PILL (header right): green dot = chip alive + arena KB used",
+      "LOGITS panel (left): 6 raw scores from BERT, argmax wins",
+      "WIRE PROTOCOL (under logits): TX/RX JSON between chip and laptop",
+      "RESPONSE panel (right): formatted answer from the laptop",
+    ],
     input: "show me all orders",
     spotlight: "manifest-lat",
     achievement: "✓ first on-device inference",
   },
   {
-    chapter: "how it thinks",
-    headline: "6 logits",
-    subtext: "argmax wins. margin = confidence.",
+    chapter: "classifier output",
+    headline: "6 classes",
+    subtext: "BERT outputs 6 numbers. biggest wins. margin = confidence.",
+    bullets: [
+      "Classes: VIEW_ALL, VIEW_ORDER, FILTER_BY_DEPOT, SHOW_HISTORY, CALCULATE_COST, SEARCH_ORDER",
+      "SEARCH_ORDER greyed out — deactivated by firmware (duplicate of VIEW_ORDER)",
+      "Confident phrases win by ≥1.5 logits",
+      "Below 0.3 margin → rule layer takes over (next chapter)",
+    ],
     input: "view order 101",
     spotlight: "logits-panel",
   },
   {
-    chapter: "what i had to write",
-    headline: "2 kernels",
-    subtext: "custom GELU + hybrid FC. tflite micro doesn't ship them.",
-    input: null,
-    spotlight: "stats-btn",
-    action: "open-stats",
-  },
-  {
-    chapter: "the speedup",
-    headline: "86 % off",
-    subtext: "3.7 s → 510 ms. five flags, no retrain.",
+    chapter: "latency optimization",
+    headline: "3.7 s → 510 ms",
+    subtext: "five config changes, no retraining. 86 % reduction.",
+    bullets: [
+      "Compiler: -Og debug → -O2 perf (~45 % gain)",
+      "CPU clock: 160 MHz → 240 MHz (~33 % gain)",
+      "Data cache: 32 KB → 64 KB / 64-byte lines",
+      "Tensor arena: PSRAM → internal DRAM (~10× faster reads)",
+      "Sequence length: 64 → 32 (half the attention math, no retrain)",
+    ],
     input: "calculate the cost of order 101",
     spotlight: "manifest-lat",
   },
   {
-    chapter: "when bert is wrong",
-    headline: "hybrid guard",
-    subtext: "BERT for fuzzy. rules for high-precision keywords.",
+    chapter: "rule-based override",
+    headline: "BERT + rules",
+    subtext: "BERT handles fuzzy phrasing. rules handle unambiguous keywords.",
+    bullets: [
+      "'upcoming' is out-of-distribution — never seen during training",
+      "BERT picks SHOW_HISTORY by pattern-matching 'show __ orders'",
+      "Post-classify rule sees keyword 'upcoming' → overrides to VIEW_ALL",
+      "Amber badge in the manifest documents the override transparently",
+    ],
     input: "show upcoming orders",
     spotlight: "manifest-override",
     action: "expand-wire",
-    achievement: "✓ hybrid guard fired",
+    achievement: "✓ override fired",
   },
   {
-    chapter: "beyond the dataset",
-    headline: "0 retrains",
-    subtext: 'product-name search added without touching the model.',
+    chapter: "extending without retraining",
+    headline: "name search",
+    subtext: "added product-name lookup via the rule layer. model untouched.",
+    bullets: [
+      "'find airpods' — no order ID, no depot, just a product name",
+      "Entity extractor pulls 'airpods' as a candidate name token",
+      "Server runs case-insensitive substring match across active + history",
+      "Returns 1 match: AirPodsPro from history, £6.04 via PDP",
+      "Trained model unchanged — feature lives entirely in C/Python around it",
+    ],
     input: "find airpods",
     spotlight: "response-panel",
     achievement: "✓ name search used",
   },
   {
-    chapter: "victory lap",
-    headline: "510 · 91.78 · $10",
-    subtext: "ms · % accuracy · hardware cost.",
+    chapter: "results",
+    headline: "510 ms · 91.78%",
+    subtext: "deterministic on-device inference on commodity hardware.",
+    bullets: [
+      "510 ms p50, σ = 0 across n=30 (perfectly deterministic)",
+      "91.78% test accuracy (67/73), preserved through quantization",
+      "4.22 MB model + 197 KB tensor arena, fits in 8 MB with headroom",
+      "0 bytes leave the home network during inference",
+    ],
     input: null,
     spotlight: null,
     action: "open-stats",
@@ -1003,8 +1359,7 @@ const STATS_DATA = [
   { headline: "91.78",  unit: "%",          copy: "Held-out test accuracy (67/73). Identical to the PyTorch FP32 baseline — quantization preserved every correct answer." },
   { headline: "4.22",   unit: "MB",         copy: "Dynamic-range INT8 model. Fits in 8 MB flash with 47 % headroom. Full FP32 was 16.5 MB; full INT8 broke accuracy (17.8 %)." },
   { headline: "197",    unit: "/ 256 KB",   copy: "Tensor arena in internal DRAM, not PSRAM. ~10× faster activation reads. Empirical usage 77 % of the allocation.", live: "arena" },
-  { headline: "109",    unit: "ops",        copy: "Per inference. 14 FullyConnected, 4 BatchMatMul, 19 Add, 2 GELU. Two of these are custom kernels written for this project." },
-  { headline: "ESP32-S3", unit: "WROOM-1",  copy: "Dual-core Xtensa LX7 @ 240 MHz, 8 MB octal PSRAM, 8 MB flash. Bill-of-materials cost: ~$10." },
+  { headline: "ESP32-S3", unit: "WROOM-1",  copy: "Dual-core Xtensa LX7 @ 240 MHz, 8 MB octal PSRAM, 8 MB flash. Commodity microcontroller." },
   { headline: "0",      unit: "B leave home", copy: "All inference on-device. Laptop hosts the parcel database; no internet calls. Functional during outages." },
   { headline: "32",     unit: "tokens",     copy: "Max sequence length (was 64). Real queries are 5–10 WordPiece tokens; halving cut attention's O(N²) cost in half again." },
 ];
@@ -1378,6 +1733,7 @@ function closeDemo() {
   $("#demo-hud").hidden = true;
   $("#chapter-intro").hidden = true;
   $("#demo-btn").classList.remove("active");
+  setStoryPanel(null);   // restore the main split (logits + response)
   clearSpotlight();
 }
 function toggleStats() {
@@ -1422,6 +1778,16 @@ function renderTourStep(prevIdx) {
 
   $("#tour-subtext").textContent = s.subtext;
 
+  // bullets list (per-chapter talking points)
+  const ul = $("#tour-bullets");
+  if (s.bullets && s.bullets.length) {
+    ul.innerHTML = s.bullets.map(b => `<li>${escapeHtml(b)}</li>`).join("");
+    ul.hidden = false;
+  } else {
+    ul.hidden = true;
+    ul.innerHTML = "";
+  }
+
   if (s.input) {
     $("#tour-input-block").hidden = false;
     $("#tour-input-text").textContent = s.input;
@@ -1432,6 +1798,9 @@ function renderTourStep(prevIdx) {
   }
 
   if (s.spotlight) setSpotlight(s.spotlight); else clearSpotlight();
+
+  // Swap takeover panels in/out of the .main-split slot
+  setStoryPanel(s.panel || null);
 
   $("#tour-back").disabled = (tourIdx === 0);
   $("#tour-next").textContent = (tourIdx === TOUR.length - 1) ? "finish ✓" : "next →";
@@ -1450,6 +1819,21 @@ function renderTourStep(prevIdx) {
   if (s.achievement && (prevIdx === undefined || tourIdx > prevIdx)) {
     showToast(s.achievement);
   }
+}
+
+// ── story-panel swap (inspiration / architecture takeovers) ───────
+function setStoryPanel(which) {
+  const main  = document.querySelector(".main-split");
+  const insp  = $("#inspiration-panel");
+  const arch  = $("#architecture-panel");
+  const build = $("#build-panel");
+  insp.hidden = true;
+  arch.hidden = true;
+  build.hidden = true;
+  main.style.display = "";
+  if (which === "inspiration")       { main.style.display = "none"; insp.hidden  = false; }
+  else if (which === "architecture") { main.style.display = "none"; arch.hidden  = false; }
+  else if (which === "build")        { main.style.display = "none"; build.hidden = false; }
 }
 
 // ── chapter intro flash ───────────────────────────────────────────
