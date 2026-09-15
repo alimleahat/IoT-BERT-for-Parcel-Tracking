@@ -1,0 +1,4 @@
+# Host demo and USB bridge dependencies
+Flask>=3,<4
+pyserial>=3.5,<4
+requests>=2.31,<3

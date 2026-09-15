@@ -1,0 +1,4 @@
+* text=auto
+*.tflite binary
+finetuned_model/** linguist-generated
+esp32_firmware/main/vocab.txt linguist-generated

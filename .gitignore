@@ -35,3 +35,8 @@ sdkconfig.old
 # IDE
 .vscode/
 .idea/
+
+# Local environment and tooling artifacts
+.env
+.env.*
+!.env.example

@@ -1,210 +1,123 @@
-# IoT-BERT for Parcel Tracking
+# On-Device BERT for Parcel Tracking
 
-> Natural-language parcel tracking running entirely on a $10 microcontroller.
+**Natural-language intent classification on an ESP32-S3, connected to a local parcel-tracking application over USB.**
 
-This project deploys a fine-tuned BERT-tiny transformer onto an ESP32-S3 microcontroller for **fully on-device intent classification** of natural-language parcel-tracking commands. No cloud, no GPU, no WiFi at runtime — the chip classifies queries like *"show me all orders"* or *"calculate the cost of order 101"* in **510 ms** with **91.78 % accuracy**, then queries a local Flask server (running on a laptop) over USB serial.
+This project takes a small transformer from training and quantization to embedded inference. A fine-tuned BERT-tiny model runs on the microcontroller; a Python/Flask application handles parcel records and provides a browser demo.
 
-A live demo UI ships with the Flask server: open `http://127.0.0.1:5001/` after starting the app and click **▶ DEMO** to walk through the system.
+**Stack:** C / C++ · ESP-IDF · TensorFlow Lite Micro · BERT · Python · Flask
 
----
+## What makes this project interesting
 
-## Final results
+- **Embedded transformer inference:** WordPiece tokenization and classification run on the ESP32-S3.
+- **Custom inference kernels:** GELU and a hybrid fully connected implementation support the model's FP32 activations and INT8 weights.
+- **Measured optimization:** the committed latency sample records **510 ms median inference time** across 30 runs.
+- **Hybrid command handling:** a firmware rule layer refines model predictions and extracts order IDs, courier names, and product names.
+- **Complete demo path:** browser → Flask → USB serial → ESP32 inference → parcel lookup → browser response.
 
-| Metric | Value | Notes |
-|---|---|---|
-| On-device inference latency (p50) | **510 ms** | n=30 runs, σ=0 ms (perfectly deterministic) |
-| Test accuracy | **91.78 %** | 67/73 held-out, identical to the FP32 baseline |
-| Model size | **4.22 MB** | dynamic-range INT8 (FP32 was 16.5 MB) |
-| Tensor arena | **197 KB / 256 KB** | placed in internal DRAM for speed |
-| Hardware | **ESP32-S3-WROOM-1** | 8 MB octal PSRAM, 8 MB flash, ~$10 module |
-| Privacy footprint | **0 bytes leave home** | NLP fully on-chip, no internet calls |
+Inference needs no cloud service at runtime. Parcel storage and the browser server run on the host computer; this is not a standalone parcel database on the chip.
 
-The latency journey was **3.7 s → 510 ms (86 % reduction)** without retraining the model — five reproducible config flips:
+## Reported results and evidence
 
-1. Compiler flag `-Og` (debug) → `-O2` (perf)
-2. CPU clock 160 MHz → 240 MHz (rated speed)
-3. Data cache 32 KB / 32 B lines → 64 KB / 64 B lines
-4. Tensor arena moved from PSRAM (slow external) → internal DRAM (fast on-chip)
-5. Model re-exported at sequence length 32 instead of 64 (real queries are 5–10 tokens; positional embeddings cover up to 512)
+- **Latency:** 510 ms p50 across the 30 rows in [`kpi_latency.csv`](kpi_latency.csv), covering six phrases. All recorded values are 510 ms at the logged resolution. This measures inference, not the complete browser round trip.
+- **Model artifact:** `esp32_firmware/main/bert_model.tflite` is **4,413,640 bytes**, approximately **4.21 MiB**, using dynamic-range quantization.
+- **Accuracy:** the original project reports **67/73 = 91.78%** on the synthetic evaluation split. The training script also uses that split to select the best checkpoint, so this is a validation result, not an untouched final-test estimate.
+- **Memory:** the original project notes report approximately **197 KB of a 256 KB tensor arena**, allocated in internal memory. This is historical hardware evidence, not a fresh measurement from this documentation refresh.
 
----
+The original notes describe a reduction from roughly 3.7 seconds to 510 ms using compiler, CPU/cache, memory-placement, and sequence-length changes. Only the final latency CSV is committed; the full optimization history is not independently benchmarked here.
 
 ## Architecture
 
-```
-   ┌─────────────────────────────────┐
-   │  USER  →  types natural-language commands
-   └─────────────────────────────────┘
-                  ↓ USB serial
-   ┌─────────────────────────────────┐
-   │  ESP32-S3 (edge inference)      │
-   │  • WordPiece tokenizer          │
-   │  • TFLite Micro + bert-tiny     │
-   │    (with 2 custom kernels)      │
-   │  • argmax + entity extraction   │
-   │  • emits TX:{intent, params}    │
-   └─────────────────────────────────┘
-                  ↓ USB serial
-   ┌─────────────────────────────────┐
-   │  Laptop (Flask + flat-file db)  │
-   │  • intent dispatcher            │
-   │  • mirror of the original C     │
-   │    parcel tracker logic         │
-   │  • returns formatted response   │
-   └─────────────────────────────────┘
+```mermaid
+flowchart LR
+    UI[Browser demo] --> FLASK[Flask host application]
+    FLASK -->|USB text command| ESP[ESP32-S3]
+    ESP --> TOK[WordPiece tokenizer]
+    TOK --> BERT[BERT-tiny + custom kernels]
+    BERT --> RULES[Intent guards + entity extraction]
+    RULES -->|USB intent + parameters| FLASK
+    FLASK --> DB[Local parcel files]
+    DB --> FLASK
+    FLASK --> UI
 ```
 
-### Two custom TFLite Micro kernels (in `esp32_firmware/main/`)
+**Start reading:** [firmware command loop](esp32_firmware/main/main.c) · [inference setup](esp32_firmware/main/inference.cc) · [hybrid FC kernel](esp32_firmware/main/custom_fc.cc) · [Flask API](server/app.py)
 
-The stock TFLite Micro framework didn't ship two operations bert-tiny needs:
+## Try the host application without hardware
 
-- **`custom_gelu.cc`** — the GELU activation used inside transformer feed-forward blocks. Implemented from the standard tanh approximation.
-- **`custom_fc.cc`** — a hybrid FullyConnected kernel that handles **FP32 input × INT8 filter** with per-channel scales. This is the configuration dynamic-range quantization produces, and stock TFLM rejects it outright.
+Use Python 3.10+ and run from the repository root:
 
-### Hybrid NLP guard layer
-
-After BERT's argmax, a small rule layer in firmware (`post_classify` in `main.c`) handles two cases the model alone can't:
-- **`SEARCH_ORDER` suppression** — the model has 6 fixed classes, but `SEARCH_ORDER` is a duplicate of `VIEW_ORDER` semantically. The rule layer suppresses it post-argmax.
-- **High-precision keywords** — words like `delivered`, `upcoming`, `find`, `cost` are unambiguous in this domain. If they appear, they override the model. Out-of-distribution phrasings like *"show upcoming orders"* (the word *upcoming* never appeared during training) are caught here without retraining.
-
-### Product-name search
-
-Extending the system without touching the trained model: queries like *"find airpods"* or *"where's my macbook"* go through the rule layer (`find` keyword + no order-ID number) → the entity extractor pulls a candidate name → the server does case-insensitive substring matching across active orders + history.
-
----
-
-## Repository structure
-
-```
-.
-├── esp32_firmware/                # ESP-IDF v5.x project
-│   ├── main/
-│   │   ├── main.c                 # main loop, post-classify guard, JSON building
-│   │   ├── inference.cc           # TFLite Micro setup, custom-op registration
-│   │   ├── tokenizer.c/h          # WordPiece tokenizer (FNV-1a hash table)
-│   │   ├── entity.c/h             # rule-based entity extraction
-│   │   ├── custom_gelu.cc/h       # custom GELU kernel
-│   │   ├── custom_fc.cc/h         # custom hybrid FP32/INT8 FullyConnected kernel
-│   │   ├── bert_model.tflite      # quantized model (4.22 MB, embedded in flash)
-│   │   └── vocab.txt              # WordPiece vocabulary (30,522 entries)
-│   ├── partitions.csv             # custom flash layout (7.5 MB app partition)
-│   ├── sdkconfig.defaults         # ESP-IDF build flags (incl. perf optimizations)
-│   └── CMakeLists.txt
-│
-├── server/                        # Flask laptop server
-│   ├── app.py                     # routes: /, /api/run, /api/status, /api/intent
-│   ├── handlers.py                # 6 intent handlers — mirrors of original C functions
-│   ├── data_layer.py              # flat-file I/O matching the C parcel-tracker format
-│   ├── cost.py                    # shipping cost: base + distance·rate + weight·rate
-│   ├── time_utils.py              # "3 days left" / "10 hours ago" helpers
-│   ├── serial_runner.py           # USB serial bridge — owns /dev/cu.usbmodem*
-│   ├── static/index.html          # the demo UI (single-file ~2,000 lines)
-│   ├── test_server.py             # functional tests (7/7 passing)
-│   ├── test_intent_e2e.py         # end-to-end round-trip test
-│   ├── bench_latency.py           # latency benchmarking (n=30)
-│   └── data/                      # parcel database flat files
-│
-├── tflite_models/                 # all quantization variants
-├── data/                          # generated training/test JSON
-├── generate_dataset.py            # synthetic training-phrase generator (~60/intent)
-├── finetune_and_export.py         # PyTorch fine-tuning + TFLite export pipeline
-├── export_seq32.py                # re-export at seq_len=32 from existing checkpoint
-├── PRESENTATION_PREP.md           # demo-day prep doc (sections 1–15)
-└── kpi_latency.csv                # raw bench results (30 runs × 6 phrases)
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r server/requirements.txt
+DISABLE_SERIAL=1 python server/app.py
 ```
 
----
+Open `http://127.0.0.1:5001`. The page and already-classified intent API work without a chip; natural-language inference through `/api/run` requires the ESP32 and returns a clear error when serial is disabled.
 
-## Quick start
+Example in another terminal:
 
-### 1. Run the Flask server + UI
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install flask pyserial
-cd server
-python app.py
-# open http://127.0.0.1:5001/ in your browser
+```sh
+curl http://127.0.0.1:5001/api/intent \
+  -H 'Content-Type: application/json' \
+  -d '{"intent":"VIEW_ALL","params":{}}'
 ```
 
-If macOS gives the chip a different `usbmodem*` number after a replug:
+The host is a local development/demo server. Its parcel files contain dated sample records; time-based handlers can move expired orders into history.
 
-```bash
-SERIAL_PORT=$(ls /dev/cu.usbmodem* | head -1) python server/app.py
-```
+## Run the hardware demo
 
-### 2. Build + flash the firmware (optional — pre-built model is already in the repo)
+The committed lockfile records **ESP-IDF 5.4.1** and **esp-tflite-micro 1.3.5**. Use an ESP32-S3 board matching the configured **8 MB flash and octal PSRAM** setup.
 
-Requires ESP-IDF v5.x.
+In an activated ESP-IDF environment:
 
-```bash
+```sh
 cd esp32_firmware
 idf.py set-target esp32s3
 idf.py build
-idf.py -p /dev/cu.usbmodem* flash monitor
+idf.py -p YOUR_SERIAL_PORT flash
 ```
 
-### 3. Fine-tune from scratch (optional)
+The quantized model and vocabulary are already included. Return to the repository root and start the host with the actual device path:
 
-```bash
-pip install torch transformers datasets scikit-learn tensorflow
-python generate_dataset.py        # produces data/train.json + data/test.json
-python finetune_and_export.py     # 50 epochs on MPS, exports 4 TFLite variants
-python export_seq32.py            # re-export at seq_len=32 (used in firmware)
-cp tflite_models/bert_tiny_intent_dynamic_seq32.tflite \
-   esp32_firmware/main/bert_model.tflite
+```sh
+SERIAL_PORT=/dev/cu.usbmodem1101 python server/app.py
 ```
 
----
+Replace the example path with your board's serial port. Close `idf.py monitor` before using the web demo: the Flask serial runner needs exclusive access to the port. Click **DEMO** in the UI for the guided tour.
 
-## Demo Mode
+## Checks
 
-The UI ships with a guided 9-chapter tour. Click **▶ DEMO** in the header. Chapters:
+```sh
+python3 scripts/test_host.py
+```
 
-1. Motivation — why on-device NLP
-2. Architecture — 3-tier breakdown
-3. The build — pipeline from C parcel tracker → fine-tuned BERT → flashed firmware
-4. First query · interface tour — fire `show me all orders`, walk through every panel
-5. Classifier output — 6 logits, argmax wins
-6. Latency optimization — 3.7 s → 510 ms in 5 flips
-7. Rule-based override — `show upcoming orders` triggers the hybrid guard
-8. Extending without retraining — `find airpods` → name-search via the rule layer
-9. Results — KPIs in the Stats drawer
+This runs the seven existing handler tests against a temporary copy of the server folder, preserving the committed sample data. It needs no chip, Flask process, or third-party Python packages. These are host-handler checks; they do not validate firmware inference accuracy or hardware latency.
 
-Keyboard: `←` / `→` to navigate, `Esc` to exit.
+## Training and model export
 
----
+The checked-in dataset contains 288 training and 73 evaluation examples. The root scripts cover dataset generation, PyTorch fine-tuning, TensorFlow conversion, and TFLite exports. Fine-tuned weight files are excluded, so re-exporting requires retraining or supplying a compatible checkpoint.
 
-## Notes on training
+See [training and reproduction notes](docs/training.md) for the script sequence and current limitations. The historical [project notes](docs/project-notes.md) and [presentation preparation](PRESENTATION_PREP.md) retain additional demo and optimization context.
 
-- Base model: [`prajjwal1/bert-tiny`](https://huggingface.co/prajjwal1/bert-tiny) (4.4 M parameters, 2 layers, hidden=128).
-- Training data: 361 hand-written template phrases (≈60 per intent), shuffled with seed `42`, 80/20 split → 288 train + 73 test.
-- Recipe: AdamW, lr=`3e-5`, weight_decay=`0.01`, batch=8, 50 epochs, linear warmup over 10 % of steps.
-- Hardware: Apple MPS (M-series GPU). Total training time ~5 minutes.
-- Final test accuracy: 91.78 % (67/73). Identical to the FP32 baseline after dynamic-range INT8 quantization — quantization preserved every correct prediction.
+## Repository layout
 
-The fine-tuned PyTorch checkpoint (~2.78 GB) is **not** in the repo; reproduce by running the steps in *Quick start §3*.
+```text
+esp32_firmware/    ESP-IDF project, tokenizer, inference, model, and kernels
+server/            Flask UI/API, serial bridge, parcel handlers, and sample data
+scripts/           Isolated host-test runner
+data/              Synthetic training and evaluation phrases
+tflite_models/     Exported model variants
+finetuned_model/   Tokenizer/configuration artifacts; weights excluded
+docs/              Reproduction notes and historical project write-up
+*.py               Training, conversion, and diagnostic entry points
+kpi_latency.csv    Recorded inference latency sample
+```
 
----
+## Limits and next steps
 
-## Limitations & future work
+The small synthetic dataset and keyword overrides limit generalization. Use separate training, validation, and final-test splits before making broader accuracy claims. There is no live courier integration. Firmware builds, model conversion, and device measurements require their respective toolchains and were not rerun during this portfolio refresh.
 
-- **Synthetic dataset only** — 361 hand-typed phrases is small. Real user data would help. The hybrid guard layer mitigates this for known OOD patterns but isn't a permanent fix.
-- **No live courier API integration** — the laptop's parcel database is fixed test data. Real deployment would sync against shipper APIs.
-- **TFLite Micro dispatch overhead** — about 100 ms of the 510 ms is per-op framework overhead across the model's many small ops. Layer fusion (e.g. combining LayerNorm's six ops into one) would close this gap further.
-- **Single-user, single-laptop** — the system is designed for a smart home, not multi-tenant deployment.
+## Credits
 
-Possible extensions:
-- BatchMatMul custom kernel for attention (saves a few ms each call).
-- WiFi/MQTT bridge as an alternative to USB serial (for actual smart-home deployment).
-- Larger model on a chip with more PSRAM (e.g. ESP32-P4 with 32 MB) — bert-mini would fit there.
-
----
-
-## Acknowledgements
-
-- [`prajjwal1/bert-tiny`](https://huggingface.co/prajjwal1/bert-tiny) — pretrained base model.
-- [TensorFlow Lite for Microcontrollers](https://github.com/tensorflow/tflite-micro).
-- [Espressif ESP-IDF](https://github.com/espressif/esp-idf) and the [esp-tflite-micro](https://github.com/espressif/esp-tflite-micro) component.
-- The original C parcel tracker (CW1, ELEC2302) — its flat-file format is preserved here for compatibility.
+The project builds on `prajjwal1/bert-tiny`, TensorFlow Lite Micro, Espressif ESP-IDF, and the original ELEC2302 C parcel-tracker format. Existing component and model notices are preserved. No repository-wide open-source license has been selected.
