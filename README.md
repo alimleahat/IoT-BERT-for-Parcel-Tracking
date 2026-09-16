@@ -118,6 +118,3 @@ kpi_latency.csv    Recorded inference latency sample
 
 The small synthetic dataset and keyword overrides limit generalization. Use separate training, validation, and final-test splits before making broader accuracy claims. There is no live courier integration. Firmware builds, model conversion, and device measurements require their respective toolchains and were not rerun during this portfolio refresh.
 
-## Credits
-
-The project builds on `prajjwal1/bert-tiny`, TensorFlow Lite Micro, Espressif ESP-IDF, and the original ELEC2302 C parcel-tracker format. Existing component and model notices are preserved. No repository-wide open-source license has been selected.
